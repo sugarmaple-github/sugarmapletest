@@ -1,4 +1,5 @@
 #if false
+using System.Collections.Generic;
 
 namespace Sugarmaple.Namumark.Parser
 {
@@ -7,13 +8,13 @@ namespace Sugarmaple.Namumark.Parser
     public NamuTokenizer(string source)
     {
       this.source = source;
-      defaultConfig = Namumark.Config;
+      basicKeywords = Namumark.Config;
     }
 
     private readonly string source;
     private int pos = 0;
 
-    private readonly List<NamuKeyword> defaultKeywords;
+    private readonly IEnumerable<NamuKeyword> basicKeywords;
     private List<NamuKeyword> keywords;
 
     private readonly List<NamuToken> tokenBuffer = new List<NamuToken>();
@@ -75,10 +76,11 @@ namespace Sugarmaple.Namumark.Parser
 
     private bool ConveyToken(NamuToken token, bool isComplete)
     {
-      creator.Create()
+      //creator.Create()
       //생성에 성공한다면
 
       //생성에 실패한다면
+      return false;
     }
 
     //진행된 이후에는 플래그를 박아둔 것을 제외하고 되돌리지 않기를 원칙으로 함.

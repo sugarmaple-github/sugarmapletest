@@ -1,6 +1,6 @@
 namespace Sugarmaple.Web
 {
-  internal struct RedirectParameter
+  internal struct BacklinkParameter
   {
     public string Namespace {get;}
     public string From {get;}

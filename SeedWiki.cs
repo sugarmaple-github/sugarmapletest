@@ -9,6 +9,7 @@ namespace Sugarmaple
     public string Name { get; }
     public Uri Uri { get; }
     public string BaseAddress => Uri.OriginalString;
+    //public SeedClient BaseClient { get; set; }
 
     public SeedWiki(string name, string baseAddress): this(name, new Uri(baseAddress)) {}
 

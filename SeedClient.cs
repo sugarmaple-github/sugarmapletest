@@ -1,7 +1,9 @@
 using System;
+using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Sugarmaple.Web;
@@ -10,54 +12,72 @@ namespace Sugarmaple
 {
   public class SeedClient
   {
-    private static readonly JsonSerializerOptions options =
-      new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    private static readonly JsonSerializerOptions options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    private static readonly MediaTypeHeaderValue contentType = MediaTypeHeaderValue.Parse("application/json");
 
-    
     private readonly HttpClient client = new HttpClient();
-    private string headerToken;
   
-    private string? lastDocument = null;
-    private ViewResponse? lastView = null;
+    private string? lastDocument;
+    private string? editToken;
     public SeedWiki Wiki { get; }
 
     public SeedClient(SeedWiki wiki, string apiToken)
     {
       Wiki = wiki;
+      client.BaseAddress = wiki.Uri;
       UpdateApiToken(apiToken);
-      //client.DefaultRequestHeaders.
     }
 
     private const string InvalidApiMessage = "{\"status\":\"권한이 부족합니다.\"}";
 
     #region Public Method
-    public async Task<string?> ViewAsStringAsync(string document)
+    public string? ViewAsString(string document)
     {
-      if (document.Length == 0)
-        throw new ArgumentException("The name of document can't be empty string", nameof(document));
+      if (string.IsNullOrWhiteSpace(document))
+        throw new ArgumentException("The name of document can't be null or white space.", nameof(document));
       try
       {
-        var response = await GetViewResponseAsync(document);
-
-        if(!response.Exists)
-          return null;
-        return response.Text;
+        using (var response = GetViewResponse(document))
+        {
+          if(!response.Exists)
+            return null;
+          return response.Text;
+        }
       }
       catch (AggregateException e)
       {
         throw new InvalidApiTokenException(this, true);
       }
-      return null;
     }
 
-    public async Task<EditResponse> EditAsync(string text, string log)
+    public Task<string?> ViewAsStringAsync(string document)
     {
-      return await GetEditResponseAsync(text, log);
+      return new Task<string?>(() => ViewAsString(document));
     }
 
-    public async Task<RedirectResponse> RedirectAsync(string document)
+    public Task<SeedDocumentText> View(string doucment)
     {
-      throw new Exception("");
+      
+    } 
+
+    public EditResponse Edit(string text, string log)
+    {
+      return GetEditResponse(text, log);
+    }
+
+    public Task<EditResponse> EditAsync(string text, string log)
+    {
+      return new Task<EditResponse>(() => Edit(text, log));
+    }
+
+    public BacklinkResponse GetBacklink(string document, string @from = "ACL", string @namespace = "문서", int flag = 0)
+    {
+      return GetBacklinkResponse(document, @from, @namespace, flag);
+    }
+
+    public Task<BacklinkResponse> GetBacklinkAsync(string document, string @from = "", string @namespace = "", int flag = 0)
+    {
+      return new Task<BacklinkResponse>(() => GetBacklinkResponse(document, @from, @namespace, flag));
     }
 
     public void UpdateApiToken(string apiToken)
@@ -65,64 +85,97 @@ namespace Sugarmaple
       if (!HasOnlyAscii(apiToken))
         throw new ArgumentException($"{nameof(apiToken)} must contain only ASCII characters.", nameof(apiToken));
 
-      var pastToken = headerToken;
-      headerToken = $"Bearer {apiToken}";
+      var pastAuth = client.DefaultRequestHeaders.Authorization;
+      client.DefaultRequestHeaders.Authorization = AuthenticationHeaderValue.Parse($"Bearer {apiToken}");
       if (!IsApiValid())
       {
-        headerToken = pastToken;
+        client.DefaultRequestHeaders.Authorization = pastAuth;
         throw new InvalidApiTokenException(this);
       }
     }
 
     public bool IsApiValid()
     {
-      var content = GetEditContent(" ");
+      var uri = CreateUri("edit", " ");
+      var content = client.GetAsync(uri).Result.Content;
       var output = content.ReadAsStringAsync().Result;
       return output != InvalidApiMessage;
     }
-
-    internal void DoTest()
-    {
-      var s = Console.ReadLine();
-      var resp = GetViewResponseAsync(s).Result;
-      Console.WriteLine(resp);
-      var editResp = GetEditResponseAsync("아무거나", "되나").Result;
-      Console.WriteLine(editResp);
-      Console.ReadLine();
-    }
     #endregion
 
-    private async Task<ViewResponse> GetViewResponseAsync(string document)
+    #region Web Struct Builder
+    private ViewResponse GetViewResponse(string document)
     {
-      var content = GetEditContent(document);
-      var output = await ReadFromJsonAsync<ViewResponse>(content);
-      lastView = output;
+      var uri = CreateUri("edit", document);
+      var jsonDoc = GetJsonDocument(uri);
+      var output = new ViewResponse(jsonDoc);
+      editToken = output.Token;
       lastDocument = document;
       return output;
     }
 
-    private async Task<string> GetViewResponseAsStringAsync(string document)
+    private EditResponse GetEditResponse(string text, string log)
     {
-      var content = GetEditContent(document);
-      var output = await content.ReadAsStringAsync();
-      if(output == InvalidApiMessage)
-        throw new InvalidApiTokenException(this, true);
+      if (lastDocument == null)
+        throw new InvalidOperationException("To edit, at least one document should be viewed.");
+      var uri = CreateUri("edit", lastDocument!);
+      var parameter = new EditParameter(text, log, editToken!);
+      var jsonDoc = GetJsonDocumentByPost<EditParameter>(uri, ref parameter);
+      var output = new EditResponse(jsonDoc);
       return output;
     }
 
-    private async Task<EditResponse> GetEditResponseAsync(string text, string log)
+
+
+    private BacklinkResponse GetBacklinkResponse(string document, string @from, string @namespace, int flag)
     {
-      var parameter = new EditParameter(text, log, lastView.Token);
-      var content = PostEditContent(lastDocument, ref parameter);
-      var output = await ReadFromJsonAsync<EditResponse>(content);
-      Console.WriteLine($"Status = {output.Status}");
+      var uri = CreateUri("backlink", document)
+        .AddQuery(nameof(@from), @from)
+        .AddQuery(nameof(@namespace), @namespace);
+      var jsonDoc = GetJsonDocument(uri);
+      uri.Dispose();
+      var output = new BacklinkResponse(jsonDoc);
       return output;
     }
 
-    private async Task<RedirectResponse> GetRedirectResponse(string document, RedirectParameter parameter)
+    private BacklinkResponse GetBacklinkResponseByUntil(string document, string until, string @namespace, int flag)
     {
-      throw new NotImplementedException();
+      var uri = CreateUri("backlink", document)
+        .AddQuery(nameof(until), until)
+        .AddQuery(nameof(@namespace), @namespace)
+        .AddQuery(nameof(flag), flag);
+      var jsonDoc = GetJsonDocument(uri);
+      uri.Dispose();
+      var output = new BacklinkResponse(jsonDoc);
+      return output;
     }
+    #endregion
+
+    #region Json Creator
+    private JsonDocument GetJsonDocument(RelativeUri uri)
+    {
+      var stream = client.GetAsync(uri).Result.Content.ReadAsStream();
+      //StreamReader reader = new StreamReader(stream);
+      //string text = reader.ReadToEnd();
+      //Console.WriteLine($"Inner Test: {text}");
+      //Console.ReadLine();
+      //if(output == InvalidApiMessage)
+      //  throw new InvalidApiTokenException(this, true);
+      return JsonDocument.Parse(stream);
+    }
+
+    private JsonDocument GetJsonDocumentByPost<T>(RelativeUri uri, ref T data)
+    {
+      var jsonContent = JsonContent.Create<T>(data, contentType, options);
+      var stream = client.PostAsync(uri, jsonContent).Result.Content.ReadAsStream();
+      return JsonDocument.Parse(stream);
+    }
+
+    #endregion
+
+    #region Utility
+    private static RelativeUri CreateUri() => RelativeUri.Create("api");
+    private static RelativeUri CreateUri(string path, string document) => CreateUri().AddPath(path).AddPath(document);
 
     private static bool HasOnlyAscii(string value)
     {
@@ -131,56 +184,36 @@ namespace Sugarmaple
           return false;
       return true;
     }
+    #endregion
 
-    private Task<T> ReadFromJsonAsync<T>(HttpContent content)
+    #region Test Method
+    internal void DoTest()
     {
-      try
+      var json = JsonDocument.Parse("{\"namespaces\":[{\"namespace\":\"사용자\",\"count\":1}],\"backlinks\":[{\"document\":\"사용자:koreapyj/test1\",\"flags\":\"link\"}],\"from\":null,\"until\":null}");
+      var document = Console.ReadLine()!;
+      string query = $"";
+      var uri = CreateUri().AddPath("backlink").AddPath(document);
+      var doc = GetJsonDocument(uri);
+      var root = doc.RootElement;
+      var backlinks = root.GetProperty("backlinks").EnumerateArray();
+      foreach (var l in backlinks)
       {
-        var output = content.ReadFromJsonAsync<T>(options);
-        return output;
+        Console.WriteLine(l);
       }
-      catch (Exception e)
+      var r = new BacklinkResponse(doc);
+      foreach (var b in r.Backlinks)
       {
-        Console.WriteLine("Json외 값이 반환되었습니다.");
-        var stringOutput = content.ReadAsStringAsync().Result;
-        Console.WriteLine(stringOutput);
-        Console.ReadLine();
+        Console.WriteLine(b);
       }
-      return null;
+      foreach(var n in r.Namespaces)
+        Console.WriteLine($"이름공간: {n}");
+      //Console.WriteLine(r.Backlinks.Count());
+      //var output = ReadFromJson<BacklinkResponse>(content).Result;
+      //Console.WriteLine(output);
+      //var editResp = GetEditResponseAsync("아무거나", "되나").Result;
+      //Console.WriteLine(editResp);
+      Console.ReadLine();
     }
-
-    private HttpContent GetEditContent(string document)
-    {
-      using (var request = CreateRequest(HttpMethod.Get, $"api/edit/{document}"))
-      {
-          var response = client.SendAsync(request).Result;
-          return response.Content;
-      }
-    }
-
-    private HttpContent PostEditContent(string document, ref EditParameter data)
-    {
-      using (var request = CreateRequest(HttpMethod.Post, $"api/edit/{document}"))
-      {
-        var headerValue = MediaTypeHeaderValue.Parse("application/json"); 
-        var jsonContent = JsonContent.Create<EditParameter>(data, headerValue, options);
-        request.Content = jsonContent;
-        
-        var response = client.SendAsync(request).Result;
-        return response.Content;
-      }
-    }
-
-    private HttpContent GetRedirectContent(string document, RedirectParameter parameter)
-    {
-      throw new NotImplementedException();
-    }
-
-    private HttpRequestMessage CreateRequest(HttpMethod method, string address)
-    {
-      var request = new HttpRequestMessage(method, $"{Wiki.BaseAddress}/{address}");
-      request.Headers.TryAddWithoutValidation("Authorization", headerToken); 
-      return request;
-    }
+    #endregion
   }
 }
