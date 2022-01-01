@@ -1,0 +1,12 @@
+C:\Users\rtyui\source\repos\sugarmapletest\Sugarmaple\Sugarmaple\obj\Debug\net5.0\Sugarmaple.csprojAssemblyReference.cache
+C:\Users\rtyui\source\repos\sugarmapletest\Sugarmaple\Sugarmaple\obj\Debug\net5.0\Sugarmaple.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\rtyui\source\repos\sugarmapletest\Sugarmaple\Sugarmaple\obj\Debug\net5.0\Sugarmaple.AssemblyInfoInputs.cache
+C:\Users\rtyui\source\repos\sugarmapletest\Sugarmaple\Sugarmaple\obj\Debug\net5.0\Sugarmaple.AssemblyInfo.cs
+C:\Users\rtyui\source\repos\sugarmapletest\Sugarmaple\Sugarmaple\obj\Debug\net5.0\Sugarmaple.csproj.CoreCompileInputs.cache
+C:\Users\rtyui\source\repos\sugarmapletest\Sugarmaple\Sugarmaple\bin\Debug\net5.0\Sugarmaple.deps.json
+C:\Users\rtyui\source\repos\sugarmapletest\Sugarmaple\Sugarmaple\bin\Debug\net5.0\Sugarmaple.dll
+C:\Users\rtyui\source\repos\sugarmapletest\Sugarmaple\Sugarmaple\bin\Debug\net5.0\ref\Sugarmaple.dll
+C:\Users\rtyui\source\repos\sugarmapletest\Sugarmaple\Sugarmaple\bin\Debug\net5.0\Sugarmaple.pdb
+C:\Users\rtyui\source\repos\sugarmapletest\Sugarmaple\Sugarmaple\obj\Debug\net5.0\Sugarmaple.dll
+C:\Users\rtyui\source\repos\sugarmapletest\Sugarmaple\Sugarmaple\obj\Debug\net5.0\ref\Sugarmaple.dll
+C:\Users\rtyui\source\repos\sugarmapletest\Sugarmaple\Sugarmaple\obj\Debug\net5.0\Sugarmaple.pdb

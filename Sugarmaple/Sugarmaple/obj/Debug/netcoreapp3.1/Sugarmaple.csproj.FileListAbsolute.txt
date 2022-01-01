@@ -1,0 +1,9 @@
+C:\Users\rtyui\source\repos\Sugarmaple\Sugarmaple\bin\Debug\netcoreapp3.1\Sugarmaple.deps.json
+C:\Users\rtyui\source\repos\Sugarmaple\Sugarmaple\bin\Debug\netcoreapp3.1\Sugarmaple.dll
+C:\Users\rtyui\source\repos\Sugarmaple\Sugarmaple\bin\Debug\netcoreapp3.1\Sugarmaple.pdb
+C:\Users\rtyui\source\repos\Sugarmaple\Sugarmaple\obj\Debug\netcoreapp3.1\Sugarmaple.csprojAssemblyReference.cache
+C:\Users\rtyui\source\repos\Sugarmaple\Sugarmaple\obj\Debug\netcoreapp3.1\Sugarmaple.AssemblyInfoInputs.cache
+C:\Users\rtyui\source\repos\Sugarmaple\Sugarmaple\obj\Debug\netcoreapp3.1\Sugarmaple.AssemblyInfo.cs
+C:\Users\rtyui\source\repos\Sugarmaple\Sugarmaple\obj\Debug\netcoreapp3.1\Sugarmaple.csproj.CoreCompileInputs.cache
+C:\Users\rtyui\source\repos\Sugarmaple\Sugarmaple\obj\Debug\netcoreapp3.1\Sugarmaple.dll
+C:\Users\rtyui\source\repos\Sugarmaple\Sugarmaple\obj\Debug\netcoreapp3.1\Sugarmaple.pdb
