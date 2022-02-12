@@ -1,30 +1,60 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Sugarmaple.Namumark.Parser;
-using System.Diagnostics;
+//#define VS
+using System.IO;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Linq;
+using Sugarmaple.Namumark.Parser;
+#if VS
+
+using System.Text.RegularExpressions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Diagnostics;
+#endif
 
 namespace SugarmapleUnitTest
 {
   [TestClass]
   public class UnitTest1
   {
-    [TestMethod]
+    NamuTokenizer namumark = NamuTokenizer.Get();
+
+    //[TestMethod]
     public void TestMethod1()
     {
-      var config = Namumark.Config;
-      foreach (var c in config)
+      namumark.GetFieldValue<List<int>, Tokenizer>("namedGroupIndice").ForEach(o => Trace.WriteLine(o));
+      //var text = File.ReadAllText(@$"{Directory.GetCurrentDirectory()}/TestInput/doc.txt");
+      //foreac
+    }
+    
+    [TestMethod]
+    public void TokenTest()
+    {
+      var text = File.ReadAllText(@$"{Directory.GetCurrentDirectory()}/TestInput/doc.txt");
+      foreach(var token in namumark.GetTokens(text))
       {
-        var s = c.RegexRaw;
-        //Assert.IsNotNull(s);
-        //Assert.AreNotSame(s, "");
-        Trace.WriteLine(s);
+        Trace.WriteLine(tokenToString(token));
+        return;
       }
     }
 
-    [TestMethod]
+    static string tokenToString(Token token)
+    {
+      return @$"{{
+        SyntaxCode: {token.SyntaxCode}
+        Argument:
+          Tag: {token.Argument.Tag}
+          Parameter: {token.Argument.Parameter}
+          Level: {token.Argument.Level}
+}}";
+    }
+
+    //[TestMethod]
     public void TestMethodRegex()
     {
-      var r = new Regex(@"(?<32>A)(?<12>B)()()\k<2>");
+      var regexRaw = namumark.GetFieldValue<Regex, Tokenizer>("regex");
+      Trace.WriteLine(regexRaw);
     }
   }
+
+  
 }

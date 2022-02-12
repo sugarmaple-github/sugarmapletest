@@ -5,6 +5,7 @@
     <TargetFramework>netcoreapp5.0</TargetFramework>
 		<StartupObject>Program</StartupObject>
     <Nullable>enable</Nullable>
+    <DefineConstants>REPL</DefineConstants>
   </PropertyGroup>
 
 </Project>

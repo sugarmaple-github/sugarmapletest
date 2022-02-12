@@ -1,0 +1,3 @@
+1. Wiki 구현
+2. 
+//document.getElementById("app").getElementsByTagName("article")[0].getElementsByTagName("div")[9];

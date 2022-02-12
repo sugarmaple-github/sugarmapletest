@@ -8,11 +8,12 @@ class Program {
   static SeedClient? client;
 
   public static void Main (string[] args) {
-    LoginByApi();
+    SugarmapleUnitTest.TestStarter.Start();
+    /*LoginByApi();
     ShowOptions();
     while (ProcessChoice(int.Parse(Console.ReadLine()!))) {}
     Console.WriteLine("Program End");
-    Console.ReadLine();
+    Console.ReadLine();*/
   }
 
   private static bool ProcessChoice(int input)

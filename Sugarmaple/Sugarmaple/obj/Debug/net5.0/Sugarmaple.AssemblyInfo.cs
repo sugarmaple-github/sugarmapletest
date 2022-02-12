@@ -7,7 +7,8 @@
 //     이러한 변경 내용이 손실됩니다.
 // </auto-generated>
 //------------------------------------------------------------------------------
-
+#if REPL
+#else
 using System;
 using System.Reflection;
 
@@ -18,6 +19,6 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyProductAttribute("Sugarmaple")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Sugarmaple")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
-
+#endif
 // MSBuild WriteCodeFragment 클래스에서 생성되었습니다.
 
