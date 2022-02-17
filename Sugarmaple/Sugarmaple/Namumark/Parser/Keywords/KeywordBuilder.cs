@@ -88,7 +88,34 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       return this;
     }
 
-    public KeywordBuilder GroupOptions(SegmentOptions options, params string[] rawOptions)
+    public KeywordBuilder Options(params char[] chars)
+    {
+      Append('[');
+      foreach(var o in chars)
+        Append(o);
+      Append(']');
+      return this;
+    }
+
+    public KeywordBuilder Options(params KeywordBuilder[] children)
+    {
+      foreach(var o in children)
+        _headBuffer.Append(o).Append('|');
+      _headBuffer.Length--;
+      return this;
+    }
+
+    public KeywordBuilder Range(byte from, byte to)
+    {
+      Append('[');
+      _headBuffer.Append(from);
+      Append('-');
+      _headBuffer.Append(to);
+      Append(']');
+      return this;
+    }
+
+    public KeywordBuilder Group(SegmentOptions options, params string[] rawOptions)
     {
       MakeGroup(() => {
         foreach(var o in rawOptions)
@@ -103,6 +130,8 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       MakeGroup(content, ToPatternGroup(options));
       return this;
     }
+
+    public KeywordBuilder Group(params KeywordBuilder[] options) => Group(SegmentOptions.None, options.Select(o => o.ToString()).ToArray());
 
     public KeywordBuilder GroupBetween(char border, SegmentOptions options)
     {
@@ -165,16 +194,31 @@ namespace Sugarmaple.Namumark.Parser.Keywords
 
     //They make Keyword
     #region End Methods
-    public (Keyword open, Keyword close) Lifo() => Lifo(options, false);
+    public (Keyword open, Keyword close) Lifo(SegmentOptions options = SegmentOptions.None) => Lifo(options, false, null);
 
-    public (Keyword open, Keyword close) LifoPrivate(SegmentOptions options = SegmentOptions.None) => Lifo(options, true);
+    public (Keyword open, Keyword close) LifoPrivate(SegmentOptions options = SegmentOptions.None, params Keyword[] keywords) => Lifo(options, true, keywords);
 
-    private (Keyword open, Keyword close) Lifo(SegmentOptions options, bool isPrivate)
+    private (Keyword open, Keyword? close) Lifo(SegmentOptions options, bool isPrivate, Keyword[]? keywords)
     {
       var tailPattern = GetTailPattern();
-      var closingKey = tailPattern.Raw;
-      var closeFollowUp = new MatchGateFollowUp(KeywordType.Close, SyntaxCode.None, null, closingKey);
-      var close = new Keyword(tailPattern, closeFollowUp);
+      Keyword? close = null;
+      string closingKey = null;
+      if(tailPattern != null)
+      {
+        closingKey = tailPattern.Raw;
+        var closeFollowUp = new MatchGateFollowUp(KeywordType.Close, SyntaxCode.None, null, closingKey);
+        close = new Keyword(tailPattern, closeFollowUp);
+      }
+      else
+      {
+        foreach (var k in keywords)
+          if(k.FollowUp.Type == KeywordType.Close)
+          {
+            close = k;
+            closingKey = k.Pattern.Raw;
+            break;
+          }
+      }
       
       Keyword? open;
       MatchGateFollowUp openFollowUp;
@@ -182,7 +226,7 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       if (isPrivate)
       {
         open = null;
-        openFollowUp = new MatchGateFollowUp(Callback, closingKey);
+        openFollowUp = new MatchGateFollowUp(KeywordType.OpenLifo, _code, Callback, closingKey);
         return (open!, close);
       }
       else
@@ -192,7 +236,7 @@ namespace Sugarmaple.Namumark.Parser.Keywords
         return (open, close);
       }
 
-      Tokenizer Callback(MatchOpenFollowUp openFollowUp)
+      Tokenizer Callback(MatchGateFollowUp openFollowUp)
       {
         open = new Keyword(GetHeadPattern(), openFollowUp);
         return new Tokenizer(open, close);
@@ -231,6 +275,13 @@ namespace Sugarmaple.Namumark.Parser.Keywords
 
     public static KeywordBuilder Create(SyntaxCode code = SyntaxCode.None) => new KeywordBuilder(code);
     public static Keyword Failer(Keyword keyword) => new Keyword(keyword.Pattern, KeywordType.Fail);
+
+    public override string ToString()
+    {
+      while (_tailBuffer.Count > 0)
+        _headBuffer.Append(_tailBuffer.Pop());
+      return _headBuffer.ToString();
+    }
     #endregion
     private const string EscapeBackslash = @"(?<!\\)(\\\\)*";
 
@@ -356,9 +407,7 @@ namespace Sugarmaple.Namumark.Parser.Keywords
 
     private PatternInfo GetPattern()
     {
-      while (_tailBuffer.Count > 0)
-        _headBuffer.Append(_tailBuffer.Pop());
-      var raw = _headBuffer.ToString();
+      var raw = ToString();
       return CreatePattern(raw);
     }
 

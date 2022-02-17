@@ -1,4 +1,4 @@
-namespace Sugarmaple.Namumark.Parser.Keywords
+/*namespace Sugarmaple.Namumark.Parser.Keywords
 {
   internal enum PatternGroup: byte
   {
@@ -7,4 +7,4 @@ namespace Sugarmaple.Namumark.Parser.Keywords
     Parameter,
     Level,
   }
-}
+}*/

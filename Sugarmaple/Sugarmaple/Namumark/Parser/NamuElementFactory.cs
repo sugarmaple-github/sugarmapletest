@@ -10,7 +10,7 @@ namespace Sugarmaple.Namumark.Parser
     private static NamuElementFactory? _instance;
     public static NamuElementFactory Instance => _instance ??= new NamuElementFactory();
 
-    private delegate NamuElement Creator(DomBasicArgument argument, TokenArgument token);
+    private delegate NamuElement Creator(DomBasicArgument argument, string[] argument);
 
     private readonly Dictionary<SyntaxCode, Creator> _creators = new ()
     {

@@ -5,17 +5,17 @@ namespace Sugarmaple.Namumark.Parser.Keywords
     public string Raw { get; }
     public int GroupNum { get; }
     public bool IsAccumulating { get; }
-    private PatternGroup[] groups;
+    //private PatternGroup[] groups;
     
-    public PatternInfo(string raw, int groupNum, bool isAccumulating, PatternGroup[] groups)
+    public PatternInfo(string raw, int groupNum, bool isAccumulating)//, PatternGroup[] groups)
     {
       Raw = raw;
       GroupNum = groupNum;
       IsAccumulating = isAccumulating;
-      this.groups = groups;
+      //this.groups = groups;
     }
 
-    public TokenArgument CreateArgument(string[] captures)
+    /*public TokenArgument CreateArgument(string[] captures)
     {
       string? tag = null;
       string? parameter = null;
@@ -36,6 +36,6 @@ namespace Sugarmaple.Namumark.Parser.Keywords
         }
       }
       return new TokenArgument(tag, parameter, level);
-    }
+    }*/
   }
 }

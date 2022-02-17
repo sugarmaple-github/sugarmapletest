@@ -1,6 +1,6 @@
-namespace Sugarmaple.Namumark.Parser
+/*namespace Sugarmaple.Namumark.Parser
 { 
-  internal struct TokenArgument
+  internal struct TokenArgument//obsolete
   {
     public string? Tag { get; }
     public string? Parameter { get; }
@@ -13,4 +13,4 @@ namespace Sugarmaple.Namumark.Parser
       Level = level;
     }
   }
-}
+}*/

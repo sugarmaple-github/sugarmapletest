@@ -14,20 +14,20 @@ namespace Sugarmaple.Namumark.Parser
     private readonly List<MatchFollowUp>[] _followUps;
     //private readonly List<Tokenizer> _otherTokenizers;
     private readonly List<int> _namedGroupIndice;
-    private readonly Keyword? _triggerKeyword;
+    //private readonly Keyword? _triggerKeyword;
 
-    public Tokenizer(params Keyword[] keywords): this(keywords, null, null)
+    /*public Tokenizer(params Keyword[] keywords): this(keywords, null, null)
     {
-    }
+    }*/
 
-    public Tokenizer(Keyword[] keywords, Keyword? openKeyword, Tokenizer? inserted)
+    public Tokenizer(params Keyword[] keywords)// Tokenizer? inserted)
     {
       _patterns = keywords.Select(o => o.Pattern).ToArray();  
       _regex = BuildRegex(keywords);
       _followUps = BuildFollowUpSet(keywords);
-      _otherTokenizers = BuildOtherTokenizers(keywords, openKeyword, inserted);
+      //_otherTokenizers = BuildOtherTokenizers(keywords, openKeyword, inserted);
       _namedGroupIndice = BuildNamedGroupIndice(keywords);
-      _triggerKeyword = openKeyword;
+      //_triggerKeyword = trigger;
     }
 
     public IEnumerable<Token> GetTokens(string source)

@@ -27,17 +27,15 @@ namespace Sugarmaple.Namumark.Parser
 
       Keyword Escape = Create().Const('\\').Escape();
 
-      (Keyword Open, Keyword Close) MarkupBrace = Create(SyntaxCode.MarkupBrace).Const('{', 3).GroupOptions(Tag, @"#!wiki", @"#!folding").GroupUntilLineEnd(Parameter).LifoPrivate(Markable, Escape, Failer(Heading), LiteralBrace.Close);
+      (Keyword Open, Keyword Close) MarkupBrace = Create(SyntaxCode.MarkupBrace).Const('{', 3)
+        .Options(
+          Create().Group(Create().Options('+', '-').Range(1, 5)),
+          Create().Group(Tag, @"#!wiki", @"#!folding").GroupUntilLineEnd(Parameter))
+        .LifoPrivate(Markable, Escape, Failer(Heading), LiteralBrace.Close);
 
       Keyword LinkOneLine = Create(SyntaxCode.Link).GroupBetween('[', 2, Tag | SingleLine).Intact();
       
-      Keyword Macro = Create(SyntaxCode.Macro).BothEnd('[').GroupOptions(Tag, MacroNames).GroupBetween('(', Parameter | Optional).Intact();
-
-      Keyword SizeBrace = Create(SyntaxCode.SizeBrace).BothEnd('{', 3).Group(@"[\+\-][1-5]", Tag).Const(' ').LifoPrivate(Markable);//키워드 그룹으로 묶을 때 헤딩과 이스케이프 적용
-
-      
-
-      
+      Keyword Macro = Create(SyntaxCode.Macro).BothEnd('[').Group(Tag, MacroNames).GroupBetween('(', Parameter | Optional).Intact();
 
       (Keyword Open, Keyword Close) Link = Create(SyntaxCode.Link).BothEnd('[', 2).GroupUntil('#', SingleLine | Tag).GroupUntil('|', Parameter | SingleLine).Lifo();
 
@@ -55,7 +53,7 @@ namespace Sugarmaple.Namumark.Parser
       .BorderRecursive{'{', 3}.Group(@"#!html", null).Group();*/
 
       Keyword Comment = Create(SyntaxCode.Comment).LineStart().Const('#', 2).GroupUntilLineEnd(Parameter).Intact();
-      Keyword List = Create(SyntaxCode.List).LineStart(true).Const(' ').GroupOptions(Tag, "*", "1.", "A.", "I.").ConstOption(' ').AccumulateAsList();
+      Keyword List = Create(SyntaxCode.List).LineStart(true).Const(' ').Group(Tag, "*", "1.", "A.", "I.").ConstOption(' ').AccumulateAsList();
       //Keyword Indent = LineStart(true).Const(' ').GroupOptions()
     //구문이 언제 끝나는가?
 
@@ -66,7 +64,7 @@ namespace Sugarmaple.Namumark.Parser
       Keyword StrikeThrough2 = Create(SyntaxCode.StrikeThrough).BothEnd('-', 2).Fifo(SingleLine);
       Keyword Superscript = Create(SyntaxCode.Superscript).BothEnd('^', 2).Fifo(SingleLine);
       Keyword Subscript = Create(SyntaxCode.Subscript).BothEnd(',', 2).Fifo(SingleLine);
-      return new Keyword[] {Heading, Macro, SizeBrace, MarkupBrace, LiteralBrace.Open, Link.Open, Link.Close, LinkOneLine, Footnote.Open, Footnote.Close,
+      return new Keyword[] {Heading, Macro, MarkupBrace.Open, LiteralBrace.Open, Link.Open, Link.Close, LinkOneLine, Footnote.Open, Footnote.Close,
       Escape, Comment, List, Bold, Italic, UnderLine, StrikeThrough, StrikeThrough2, Superscript, Subscript};
     }
     
