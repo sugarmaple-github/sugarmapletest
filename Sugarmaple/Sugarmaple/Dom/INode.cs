@@ -6,7 +6,7 @@ namespace Sugarmaple.Dom
 {
   public interface INode
   {
-    Wiki OwnerWiki { get; }
+    Wiki? OwnerWiki { get; }
 
     Document? OwnerDocument { get; }
 

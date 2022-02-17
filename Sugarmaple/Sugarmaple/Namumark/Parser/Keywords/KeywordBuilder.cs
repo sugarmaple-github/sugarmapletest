@@ -10,21 +10,22 @@ namespace Sugarmaple.Namumark.Parser.Keywords
 {
   internal class KeywordBuilder
   {
-    //private readonly SyntaxCode code;
-    private readonly StringBuilder buffer;
-    private readonly Stack<char> bookedChars;
+    private readonly SyntaxCode _code;
+    private readonly StringBuilder _headBuffer;
+    private readonly Stack<char> _tailBuffer;
     private bool isAccumulating = false;
     private int groupNum = 1;
     private List<PatternGroup> groups = new List<PatternGroup>();
 
 
-    public KeywordBuilder()
+    public KeywordBuilder(SyntaxCode code)
     {
-      buffer = StringBuilderPool.Obtain();
-      bookedChars = new Stack<char>();
+      _code = code;
+      _headBuffer = StringBuilderPool.Obtain();
+      _tailBuffer = new Stack<char>();
     }
 
-    #region Builder Functions
+    #region Build Methods
     //온전함
     //선입선출 = 디자인
     //후입선출 (개행 시 실패)
@@ -58,6 +59,12 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       return this;
     }
 
+    public KeywordBuilder BothEnd(char value)
+    {
+      AppendBothSide(value);
+      return this;
+    }
+
     public KeywordBuilder BothEnd(char value, int repeatCount)
     {
       AppendBothSide(value, repeatCount);
@@ -85,8 +92,8 @@ namespace Sugarmaple.Namumark.Parser.Keywords
     {
       MakeGroup(() => {
         foreach(var o in rawOptions)
-          buffer.Append(o).Append('|');
-        buffer.Length--;
+          _headBuffer.Append(Regex.Escape(o)).Append('|');
+        _headBuffer.Length--;
       }, ToPatternGroup(options));
       return this;
     }
@@ -156,25 +163,40 @@ namespace Sugarmaple.Namumark.Parser.Keywords
 
     #endregion
 
-    #region End Functions
-    public (Keyword open, Keyword close) Lifo(SyntaxCode code)
-    {
-      var tailPattern = GetTailPattern();
-      var close = new Keyword(tailPattern, KeywordType.Close);
-      var closingKey = tailPattern.Raw;
-      var openFollowUp = new MatchFollowUp(KeywordType.OpenLifo, false, code, closingKey);
-      var open = new Keyword(GetHeadPattern(), openFollowUp);
-      return (open, close);
-    }
+    //They make Keyword
+    #region End Methods
+    public (Keyword open, Keyword close) Lifo() => Lifo(options, false);
 
-    public Keyword LifoPrivate(SyntaxCode code, SegmentOptions options = SegmentOptions.None)
+    public (Keyword open, Keyword close) LifoPrivate(SegmentOptions options = SegmentOptions.None) => Lifo(options, true);
+
+    private (Keyword open, Keyword close) Lifo(SegmentOptions options, bool isPrivate)
     {
       var tailPattern = GetTailPattern();
-      //var close = new Keyword(tailPattern, KeywordType.Close);
       var closingKey = tailPattern.Raw;
-      var openFollowUp = new MatchFollowUp(KeywordType.OpenLifo, true, code, closingKey);
-      var open = new Keyword(GetHeadPattern(), openFollowUp);
-      return open;
+      var closeFollowUp = new MatchGateFollowUp(KeywordType.Close, SyntaxCode.None, null, closingKey);
+      var close = new Keyword(tailPattern, closeFollowUp);
+      
+      Keyword? open;
+      MatchGateFollowUp openFollowUp;
+
+      if (isPrivate)
+      {
+        open = null;
+        openFollowUp = new MatchGateFollowUp(Callback, closingKey);
+        return (open!, close);
+      }
+      else
+      {
+        openFollowUp = new MatchGateFollowUp(KeywordType.OpenLifo, _code, closingKey);
+        open = new Keyword(GetHeadPattern(), openFollowUp);
+        return (open, close);
+      }
+
+      Tokenizer Callback(MatchOpenFollowUp openFollowUp)
+      {
+        open = new Keyword(GetHeadPattern(), openFollowUp);
+        return new Tokenizer(open, close);
+      }
     }
 
     /*public Keyword LifoPrivate(SyntaxCode code, Keyword escape, PatternInfo failurePattern, SegmentOptions options)
@@ -186,9 +208,9 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       return open;
     }*/
 
-    public Keyword Fifo(SyntaxCode code, SegmentOptions options)
+    public Keyword Fifo(SegmentOptions options)
     {
-      return new Keyword(GetHeadPattern(), KeywordType.OpenCloseFifo, code);
+      return new Keyword(GetHeadPattern(), KeywordType.OpenCloseFifo, _code);
     }
 
     public Keyword Escape()
@@ -197,15 +219,18 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       return new Keyword(GetPattern());
     }
 
-    public Keyword Accumulate(SyntaxCode code)
+    public Keyword AccumulateAsList()
     {
-      return new Keyword(GetPattern(), KeywordType.AccumulateAsList, code);
+      return new Keyword(GetPattern(), KeywordType.AccumulateAsList, _code);
     }
 
-    public Keyword Intact(SyntaxCode code)
+    public Keyword Intact()
     {
-      return new Keyword(GetPattern(), KeywordType.Intact, code);
+      return new Keyword(GetPattern(), KeywordType.Intact, _code);
     }
+
+    public static KeywordBuilder Create(SyntaxCode code = SyntaxCode.None) => new KeywordBuilder(code);
+    public static Keyword Failer(Keyword keyword) => new Keyword(keyword.Pattern, KeywordType.Fail);
     #endregion
     private const string EscapeBackslash = @"(?<!\\)(\\\\)*";
 
@@ -282,10 +307,10 @@ namespace Sugarmaple.Namumark.Parser.Keywords
     }
 
     #region basic operator
-    private void Append(char value) => buffer.Append(value);
-    private void Append(char value, int repeatCount) => buffer.Append(value, repeatCount);
-    private void Append(string value) => buffer.Append(value);
-    private void PrependTail(char value) => bookedChars.Push(value);
+    private void Append(char value) => _headBuffer.Append(value);
+    private void Append(char value, int repeatCount) => _headBuffer.Append(value, repeatCount);
+    private void Append(string value) => _headBuffer.Append(value);
+    private void PrependTail(char value) => _tailBuffer.Push(value);
     #endregion
     #endregion
 
@@ -315,25 +340,25 @@ namespace Sugarmaple.Namumark.Parser.Keywords
     #region Pattern Factory
     private PatternInfo GetHeadPattern()
     {
-      var raw = buffer.ToString();
+      var raw = _headBuffer.ToString();
       return CreatePattern(raw);
     }
 
     private PatternInfo GetTailPattern()
     {
-      var buffer = StringBuilderPool.Obtain();
-      while (bookedChars.Count > 0)
-        buffer.Append(bookedChars.Pop());
-      var raw = buffer.ToString();
-      buffer.ToPool();
+      var _headBuffer = StringBuilderPool.Obtain();
+      while (_tailBuffer.Count > 0)
+        _headBuffer.Append(_tailBuffer.Pop());
+      var raw = _headBuffer.ToString();
+      _headBuffer.ToPool();
       return new PatternInfo(raw, 1, isAccumulating, groups.ToArray());
     }
 
     private PatternInfo GetPattern()
     {
-      while (bookedChars.Count > 0)
-        buffer.Append(bookedChars.Pop());
-      var raw = buffer.ToString();
+      while (_tailBuffer.Count > 0)
+        _headBuffer.Append(_tailBuffer.Pop());
+      var raw = _headBuffer.ToString();
       return CreatePattern(raw);
     }
 

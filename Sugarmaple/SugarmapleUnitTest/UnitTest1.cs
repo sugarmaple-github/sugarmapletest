@@ -1,3 +1,4 @@
+#nullable enable
 //#define VS
 using System.IO;
 using System.Collections.Generic;
@@ -16,7 +17,7 @@ namespace SugarmapleUnitTest
   [TestClass]
   public class UnitTest1
   {
-    NamuTokenizer namumark = NamuTokenizer.Get();
+    NamuTokenizer namumark = NamuTokenizer.Instance;
 
     //[TestMethod]
     public void TestMethod1()
@@ -26,14 +27,17 @@ namespace SugarmapleUnitTest
       //foreac
     }
     
-    [TestMethod]
+    //[TestMethod]
     public void TokenTest()
     {
       var text = File.ReadAllText(@$"{Directory.GetCurrentDirectory()}/TestInput/doc.txt");
+      var count = 3;
       foreach(var token in namumark.GetTokens(text))
       {
         Trace.WriteLine(tokenToString(token));
-        return;
+        count--;
+        if(count == 0)
+          return;
       }
     }
 
@@ -48,10 +52,10 @@ namespace SugarmapleUnitTest
 }}";
     }
 
-    //[TestMethod]
+    [TestMethod]
     public void TestMethodRegex()
     {
-      var regexRaw = namumark.GetFieldValue<Regex, Tokenizer>("regex");
+      var regexRaw = namumark.GetFieldValue<Regex, Tokenizer>("_regex");
       Trace.WriteLine(regexRaw);
     }
   }

@@ -14,6 +14,9 @@ namespace Sugarmaple.Text
     //base 1
     public int Position { get; }
 
+    public int Index => Position - 1;
+
+
     public TextPosition(int line, int column, int position)
     {
       Line = line;

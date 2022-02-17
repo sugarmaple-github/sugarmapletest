@@ -17,5 +17,6 @@ namespace Sugarmaple.Namumark.Parser
     Comment,
     Footnote,
     Link,
+    List,
   }
 }

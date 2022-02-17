@@ -7,18 +7,28 @@ namespace Sugarmaple.Namumark.Parser.Keywords
   {
     public KeywordType Type { get; }
     public SyntaxCode SyntaxCode { get; }
-    public bool HasPrivateContext { get; }
-    //only valid if KeywordType == Open
-    public string? ClosingKey { get; }
+    //only true possible when KeywordType == Open
+    //public bool HasPrivateContext { get; }//obsolete
 
-    public MatchFollowUp(KeywordType type = KeywordType.None, SyntaxCode code = SyntaxCode.None): this(type, false, code) {}
+    //only valid if KeywordType == Open,
+    //public bool Markable { get; }//obsolete
 
-    public MatchFollowUp(KeywordType type, bool hasPrivateContext, SyntaxCode code, string? closingKey = null)
+    
+
+    public MatchFollowUp(KeywordType type = KeywordType.None, SyntaxCode code = SyntaxCode.None)//: this(type, false, code) {}
+    {
+      Type = type;
+      //HasPrivateContext = hasPrivateContext;
+      SyntaxCode = code;
+      //ClosingKey = closingKey;
+    }
+
+    /*public MatchFollowUp(KeywordType type, bool hasPrivateContext, SyntaxCode code, string? closingKey = null)
     {
       Type = type;
       HasPrivateContext = hasPrivateContext;
       SyntaxCode = code;
       ClosingKey = closingKey;
-    }
+    }*/
   }
 }

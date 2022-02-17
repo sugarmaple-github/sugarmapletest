@@ -2,13 +2,11 @@ namespace Sugarmaple.Dom
 {
   public class Document: Node
   {
-    internal Document(SeedWiki ownerWiki, string title): base(ownerWiki, this)
+    internal Document(Wiki ownerWiki, string title): base(ownerWiki, NodeType.Document)
     {
-      OwnerWiki = ownerWiki;
       //Title = title;
     }
 
-    public SeedWiki OwnerWiki { get; }  
     public DocumentTitle Title { get; }
   }
 
