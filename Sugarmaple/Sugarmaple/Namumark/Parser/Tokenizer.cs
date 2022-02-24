@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Sugarmaple.Text;
 using Sugarmaple.Namumark.Parser.Keywords;
+using Sugarmaple.Namumark.Parser.Tokens;
 
 namespace Sugarmaple.Namumark.Parser
 {
@@ -11,119 +12,151 @@ namespace Sugarmaple.Namumark.Parser
   {
     private readonly PatternInfo[] _patterns;
     private readonly Regex _regex;
-    private readonly List<MatchFollowUp>[] _followUps;
-    //private readonly List<Tokenizer> _otherTokenizers;
+    private readonly List<TokenCommand>[] _commands;
     private readonly List<int> _namedGroupIndice;
-    //private readonly Keyword? _triggerKeyword;
 
-    /*public Tokenizer(params Keyword[] keywords): this(keywords, null, null)
-    {
-    }*/
-
-    public Tokenizer(params Keyword[] keywords)// Tokenizer? inserted)
+    public Tokenizer(params Keyword[] keywords)
     {
       _patterns = keywords.Select(o => o.Pattern).ToArray();  
       _regex = BuildRegex(keywords);
-      _followUps = BuildFollowUpSet(keywords);
-      //_otherTokenizers = BuildOtherTokenizers(keywords, openKeyword, inserted);
+      _commands = BuildCommandSet(keywords);
       _namedGroupIndice = BuildNamedGroupIndice(keywords);
-      //_triggerKeyword = trigger;
     }
 
-    public IEnumerable<Token> GetTokens(string source)
-    {
-      return GetTokens(source, 0, null).Where(o => o.Operation == TokenizeOperation.None);
-    }
+    public IEnumerable<ElementToken> GetTokens(string source) => GetElementTokens(source, 0, source.Length);
     
     #region Private Methods
-
-    private IEnumerable<Token> GetTokens(string source, int startat, string? closingKey)
+    private IEnumerable<ElementToken> GetElementTokens(string source, int startat, int length) => GetTokens(source, startat, length, null, true).Cast<ElementToken>();
+    private IEnumerable<Token> GetTokens(string source, int startat, OpenTokenCommand? open) => GetTokens(source, startat, source.Length - startat, open);
+    private IEnumerable<Token> GetTokens(string source, int startat, int length, OpenTokenCommand? open = null, bool getElementOnly = false)
     {
       int i = startat;
+      var fifoOpenBuffer = new List<OpenTokenCommand>();
+      var tokenBuffer = new List<Token>();
       while (i < source.Length)
       {
-        var match = Match(source, i);
+        var match = Match(source, i, length + i - startat);
         if (match == null)
           break;
-        var token = InvokeFollowUps(source, match!, closingKey);
-        if(token != null)
+        var token = ExecuteCommands(match!, tokenBuffer, open);
+        switch (token.Operation)
+        {
+          case TokenizeOperation.Element:
+            yield return token;
+          case TokenizeOperation.Open:
+            tokenBuffer.Add(token);
+            
+          case TokenizeOperation.Close:
+            yield return token;
+            yield break;
+          case TokenizeOperation.OpenClose:
+            yield return token;
+    
+          case TokenizeOperation.Fail:
+            yield return token;
+            yield break;
+        }
+        
+        if(!getElementOnly || (getElementOnly && token is ElementToken element))
           yield return token;
         i = match.End;
       }
     }
 
-    private Token? InvokeFollowUps(string source, PatternMatch match, string? closingKey)
+    private Token? ExecuteCommands(PatternMatch match, List<Token> tokenBuffer, OpenTokenCommand? open)
     {
       var index = match.Index;
-      foreach(var followUp in _followUps[match.KeywordIndex])
+      foreach(var command in match.Commands)
       {
-        switch (followUp.Type)
-        {
-          case KeywordType.Intact: 
-            return new Token(followUp.SyntaxCode, match.Argument, GetTextPosition(index), match.Length, null);
-          case KeywordType.IntactAndMarkInside:
-            
-            break;
-          case KeywordType.OpenLifo:
-            var open = (MatchGateFollowUp)followUp;
-            if (open.Tokenizer != null)
-            {
-              //need to make private Context
-              //var children = GetTokens(source, match.End, followUp.ClosingKey);
-            }
-            else
-            {
-              var children = new List<Token>();
-              Token? last = null;
-              foreach (var e in GetTokens(source, match.End, open.ClosingKey))
-              {
-                if(e.Operation == TokenizeOperation.Fail || e.Operation == TokenizeOperation.Close)
-                  break;
-                children.Add(e);
-                last = e;
-              }
-              if(last.Operation != TokenizeOperation.Close)
-                return new Token(GetTextPosition(index), match.Length, TokenizeOperation.Fail);
-
-              return new Token(followUp.SyntaxCode, match.Argument, GetTextPosition(index), last.Position.Index + last.Length - index, children);
-            }
-            
-            break;
-            //return  성공시 이걸 자식으로 가져야함.
-          case KeywordType.OpenCloseFifo:
-
-          
-            break;
-          case KeywordType.Close:
-            var close = (MatchGateFollowUp)followUp;
-            if (closingKey == close.ClosingKey)
-              return new Token(GetTextPosition(index), match.Length, TokenizeOperation.Close);
-            break;
-          case KeywordType.Fail:
-            //if 
-            return new Token(GetTextPosition(index), match.Length, TokenizeOperation.Fail);
-            //break;
-        }
+        var token = ExecuteCommand(command, match, tokenBuffer, open);
+        if(token != null) return token;
       }
       return null;
     }
 
-    private TextPosition GetTextPosition(int index)
+    private Token? ExecuteCommand(TokenCommand command, PatternMatch match, List<Token> tokenBuffer, OpenTokenCommand? open)
     {
-      return new TextPosition(0, 0, index+1);//수정 필요
+      switch (command.Type)
+      {
+        case CommandType.Intact: 
+          return ExecuteIntact(command.SyntaxCode, match);
+        case CommandType.OpenLifo:
+          return ExecuteLifo((OpenTokenCommand)command, match);
+        case CommandType.OpenCloseFifo:
+          return ExecuteFifo((OpenTokenCommand)command, match, tokenBuffer);
+        case CommandType.Close:
+          if (open != null && open.IsClosePartner(command))
+            return new Token(match.Index, match.Length, TokenizeOperation.Close);
+          break;
+        case CommandType.Fail:
+          if (open != null && open.IsFailPartner(command))
+            return new Token(match.Index, match.Length, TokenizeOperation.Fail);
+          break;
+      }
+      return null;
     }
 
-    private PatternMatch? Match(string source, int startat)
+    private ElementToken ExecuteIntact(SyntaxCode code, PatternMatch match)
     {
-      var m = _regex.Match(source, startat);
+      IEnumerable<ElementToken>? children = null;
+      foreach (var g in match.Groups)
+      {
+        if(g.IsWikiBlock)
+        {
+          children = GetElementTokens(match.Text, g.Index, g.Length);
+          break;
+        }
+      }
+      return new ElementToken(code, match.Groups, match.Index, match.Length, children);
+    }
+
+    private Token? ExecuteLifo(OpenTokenCommand command, PatternMatch match)
+    {
+      var context = command.Tokenizer ?? this;
+      var tokens = context.GetTokens(match.Text, match.End, command);
+      var children = new List<ElementToken>();
+      Token? last = null;
+      foreach (var t in tokens)
+      {
+        if(t.Operation == TokenizeOperation.Fail || t.Operation == TokenizeOperation.Close)
+          break;
+        children.Add((ElementToken)t);
+        last = t;
+      }
+      if(last == null || last.Operation != TokenizeOperation.Close)
+        return new Token(match.Index, match.Length, TokenizeOperation.Fail);
+
+      return new ElementToken(command.SyntaxCode, match.Groups, match.Index, last.Index + last.Length - match.Index, children);
+    }
+
+    private Token? ExecuteFifo(OpenTokenCommand command, PatternMatch match, List<Token> tokenBuffer)
+    {
+      foreach(var t in tokenBuffer)
+      {
+        if (t.IsClosePartner(command))
+        {
+          var length = last.Index + last.Length - match.Index;
+          return new ElementToken(command.SyntaxCode, match.Groups, match.Index, length, GetChildren()); //need to find
+        }
+      }
+      fifoOpens.Add(command);
+      return null;
+      
+      IEnumerable<ElementToken> GetChildren() => tokenBuffer.TypeOf<ElementToken>();
+    }
+
+    private PatternMatch? Match(string source, int startat, int length)
+    {
+      var m = _regex.Match(source, startat, length);
       for (int i = 0; i < _patterns.Length; i++)
       {
         if (m.Groups[_namedGroupIndice[i]].Success)
         {
           var pattern = _patterns[i];
-          var argument = pattern.CreateArgument(m.Groups.Cast<Group>().Skip(_namedGroupIndice[i]+1).Take(pattern.GroupNum-1).Select(o => o.Value).ToArray());
+          var groupIndex = 1;
+          var argument = m.Groups.Cast<Group>().Skip(_namedGroupIndice[i]+1).Take(pattern.GroupNum-1).Select(o => new PatternGroup(source, o.Index, o.Length, groupIndex++ == pattern.MarkableGroup)).ToArray();
 
-          return new PatternMatch(source, m.Index, m.Length, argument, i);
+          return new PatternMatch(source, m.Index, m.Length, argument, _commands[i]);
         }
       }
       return null;
@@ -145,13 +178,13 @@ namespace Sugarmaple.Namumark.Parser
       return regex;
     }
 
-    private static List<MatchFollowUp>[] BuildFollowUpSet(Keyword[] keywords)
+    private static List<TokenCommand>[] BuildCommandSet(Keyword[] keywords)
     {
-      var ret = new List<MatchFollowUp>[keywords.Length];
+      var ret = new List<TokenCommand>[keywords.Length];
       for (int i = 0; i < ret.Length; i++)
       {
-        ret[i] = new List<MatchFollowUp>();
-        ret[i].Add(keywords[i].FollowUp);
+        ret[i] = new List<TokenCommand>();
+        ret[i].Add(keywords[i].Command);
       }
       for (int i = 0; i < keywords.Length - 1; i++)
       {
@@ -169,34 +202,6 @@ namespace Sugarmaple.Namumark.Parser
       //+패턴을 나열할 때는 포함하는 패턴이 포함된 패턴보다 선행되어야 한다.
       return ret;
     }
-
-    /*private static List<Tokenizer> BuildOtherTokenizers(Keyword[] keywords, Keyword? openKeyword, Tokenizer? inserted)
-    {
-      var ret = new Tokenizer[keywords.Length];
-      for (int i = keywords.Length - 1; i >= 0; i--)
-      {
-        if (keywords[i] == inserted._triggerKeyword)
-          ret[i] = inserted;
-
-        if (!keywords[i].HasPrivateContext || keywords[i] == openKeyword)
-          continue;
-        
-        var subKeywords = new List<Keyword>();
-        if (keywords[i].FollowUp.Markable)
-        {
-          subKeywords.Add();
-          //heading fail 조건
-        }
-        subKeywords.Add(keywords[i]);
-          
-        var closer = keywords[i].FollowUp.ClosingKey;
-          
-        subKeywords.Add();
-        //keywords[i].FollowUp.ClosingKey로 키워드 생성
-          
-        ret[i] = new Tokenizer(subKeywords.ToArray());
-      }
-    }*/
 
     private static List<int> BuildNamedGroupIndice(Keyword[] keywords)
     {

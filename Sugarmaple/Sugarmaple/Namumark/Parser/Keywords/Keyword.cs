@@ -5,15 +5,15 @@ namespace Sugarmaple.Namumark.Parser.Keywords
 {
   internal class Keyword
   {
-    public Keyword(PatternInfo pattern, MatchFollowUp followUp)
+    public Keyword(PatternInfo pattern, TokenCommand command)
     {
       Pattern = pattern;
-      FollowUp = followUp;
+      Command = command;
     }
 
-    public Keyword(PatternInfo pattern, KeywordType type = KeywordType.None, SyntaxCode code = SyntaxCode.None): this(pattern, new MatchFollowUp(type, code)) {}
+    public Keyword(PatternInfo pattern, CommandType type = CommandType.None, SyntaxCode code = SyntaxCode.None): this(pattern, new TokenCommand(type, code)) {}
 
     public PatternInfo Pattern { get; }
-    public MatchFollowUp FollowUp { get; }
+    public TokenCommand Command { get; }
   }
 }

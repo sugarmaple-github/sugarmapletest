@@ -15,6 +15,7 @@ namespace Sugarmaple.Dom
     private Node? _parent;
     private NodeList _children;
     private TextPosition _pos;
+    private int _index;
     private int _len;
 
     //for Document
@@ -28,7 +29,7 @@ namespace Sugarmaple.Dom
     internal Node(DomBasicArgument argument): this(argument.Wiki, argument.Type)
     {
       _document = argument.Document;
-      _pos = argument.Position;
+      _index = argument.Index;
       _len = argument.Length;
     }
 

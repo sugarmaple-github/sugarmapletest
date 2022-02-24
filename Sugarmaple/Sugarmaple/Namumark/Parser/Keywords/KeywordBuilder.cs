@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using static Sugarmaple.Namumark.Parser.Keywords.SegmentOptions;
+using static Sugarmaple.Namumark.Parser.Keywords.SlotOptions;
 using Sugarmaple.Text;
 
 namespace Sugarmaple.Namumark.Parser.Keywords
@@ -15,8 +15,7 @@ namespace Sugarmaple.Namumark.Parser.Keywords
     private readonly Stack<char> _tailBuffer;
     private bool isAccumulating = false;
     private int groupNum = 1;
-    private List<PatternGroup> groups = new List<PatternGroup>();
-
+    private int markableGroup = 0;
 
     public KeywordBuilder(SyntaxCode code)
     {
@@ -71,10 +70,10 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       return this;
     }
 
-    public KeywordBuilder BothEnd(char value, int minRepeat, int maxRepeat, SegmentOptions options)
+    public KeywordBuilder BothEnd(char value, int minRepeat, int maxRepeat, SlotOptions options = SlotOptions.None)
     {
       string groupContent = (minRepeat == 0 && maxRepeat == 1) ? $"{value}?" : $"{value}{{{minRepeat},{maxRepeat}}}";
-      var groupIndex = MakeGroup(groupContent, ToPatternGroup(options));
+      var groupIndex = MakeGroup(groupContent);
       PrependTailGroup(groupIndex);
       return this;
     }
@@ -115,30 +114,28 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       return this;
     }
 
-    public KeywordBuilder Group(SegmentOptions options, params string[] rawOptions)
+    public KeywordBuilder Group(params string[] rawOptions) => Group(SlotOptions.None, rawOptions);
+
+    public KeywordBuilder Group(SlotOptions options, params string[] rawOptions)
     {
-      MakeGroup(() => {
-        foreach(var o in rawOptions)
-          _headBuffer.Append(Regex.Escape(o)).Append('|');
-        _headBuffer.Length--;
-      }, ToPatternGroup(options));
+      MakeGroup(() => AppendEscaping(rawOptions, '|'));
       return this;
     }
 
-    public KeywordBuilder Group(string content, SegmentOptions options)
+    public KeywordBuilder Group(string content, SlotOptions options = SlotOptions.None)
     {
-      MakeGroup(content, ToPatternGroup(options));
+      MakeGroup(content);
       return this;
     }
 
-    public KeywordBuilder Group(params KeywordBuilder[] options) => Group(SegmentOptions.None, options.Select(o => o.ToString()).ToArray());
+    public KeywordBuilder Group(params KeywordBuilder[] options) => Group(SlotOptions.None, options.Select(o => o.ToString()).ToArray());
 
-    public KeywordBuilder GroupBetween(char border, SegmentOptions options)
+    public KeywordBuilder GroupBetween(char border, SlotOptions options)
     {
       return GroupBetween(border, MatchedChar(border), options);
     }
 
-    public KeywordBuilder GroupBetween(char border, int repeatCount, SegmentOptions options)
+    public KeywordBuilder GroupBetween(char border, int repeatCount, SlotOptions options = SlotOptions.None)
     {
       if(options.HasFlag(Optional))
       {
@@ -156,7 +153,7 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       }
     }
 
-    public KeywordBuilder GroupBetween(char open, char close, SegmentOptions options)
+    public KeywordBuilder GroupBetween(char open, char close, SlotOptions options = SlotOptions.None)
     {
       if(options.HasFlag(Optional))
       {
@@ -174,16 +171,16 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       }
     }
 
-    public KeywordBuilder GroupUntil(char until, SegmentOptions options)
+    public KeywordBuilder GroupUntil(char until, SlotOptions options = SlotOptions.None)
     {
       MakeSlot(options);
       AppendEscaping(until);
       return this;
     }
 
-    public KeywordBuilder GroupUntilLineEnd(SegmentOptions options)
+    public KeywordBuilder GroupUntilLineEnd(SlotOptions options = SlotOptions.None)
     {
-      options |= SegmentOptions.SingleLine;
+      options |= SlotOptions.SingleLine;
       const string EndLine = @"\n?$";
       MakeSlot(options);
       Append(EndLine);
@@ -194,67 +191,46 @@ namespace Sugarmaple.Namumark.Parser.Keywords
 
     //They make Keyword
     #region End Methods
-    public (Keyword open, Keyword close) Lifo(SegmentOptions options = SegmentOptions.None) => Lifo(options, false, null);
+    public (Keyword open, Keyword close) Lifo(SlotOptions options = SlotOptions.None) => Lifo(options, false, null);
 
-    public (Keyword open, Keyword close) LifoPrivate(SegmentOptions options = SegmentOptions.None, params Keyword[] keywords) => Lifo(options, true, keywords);
+    public (Keyword open, Keyword close) LifoPrivate(SlotOptions options = SlotOptions.None, params Keyword[] keywords) => Lifo(options, true, keywords);
 
-    private (Keyword open, Keyword? close) Lifo(SegmentOptions options, bool isPrivate, Keyword[]? keywords)
+    private (Keyword open, Keyword close) Lifo(SlotOptions options, bool isPrivate, Keyword[]? keywords)
     {
       var tailPattern = GetTailPattern();
       Keyword? close = null;
-      string closingKey = null;
+      var fails = new List<TokenCommand>();
       if(tailPattern != null)
       {
-        closingKey = tailPattern.Raw;
-        var closeFollowUp = new MatchGateFollowUp(KeywordType.Close, SyntaxCode.None, null, closingKey);
-        close = new Keyword(tailPattern, closeFollowUp);
+        var closeCommand = new TokenCommand(CommandType.Close);
+        close = new Keyword(tailPattern, closeCommand);
       }
       else
       {
-        foreach (var k in keywords)
-          if(k.FollowUp.Type == KeywordType.Close)
+        foreach (var k in keywords!)
+        {
+          if (k.Command.Type == CommandType.Close)
           {
             close = k;
-            closingKey = k.Pattern.Raw;
             break;
           }
+          if (k.Command.Type == CommandType.Fail)
+            fails.Add(k.Command);
+        }
       }
       
-      Keyword? open;
-      MatchGateFollowUp openFollowUp;
-
-      if (isPrivate)
-      {
-        open = null;
-        openFollowUp = new MatchGateFollowUp(KeywordType.OpenLifo, _code, Callback, closingKey);
-        return (open!, close);
-      }
-      else
-      {
-        openFollowUp = new MatchGateFollowUp(KeywordType.OpenLifo, _code, closingKey);
-        open = new Keyword(GetHeadPattern(), openFollowUp);
-        return (open, close);
-      }
-
-      Tokenizer Callback(MatchGateFollowUp openFollowUp)
-      {
-        open = new Keyword(GetHeadPattern(), openFollowUp);
-        return new Tokenizer(open, close);
-      }
+      Keyword? open = null;
+      var openCommand = new OpenTokenCommand(CommandType.OpenLifo, _code, close!.Command, fails,
+      (OpenTokenCommand o) => {
+        open = new Keyword(GetHeadPattern(), o);
+        return isPrivate ? new Tokenizer(open!, close!) : null;
+      });
+      return (open!, close);
     }
 
-    /*public Keyword LifoPrivate(SyntaxCode code, Keyword escape, PatternInfo failurePattern, SegmentOptions options)
+    public Keyword Fifo(SlotOptions options)
     {
-      var keywords = new List<Keyword>();
-      var failure = new Keyword(failurePattern, KeywordType.Fail);
-      var close = new Keyword(GetTailPattern(), KeywordType.Close);
-      var open = new Keyword(GetHeadPattern(), KeywordType.OpenLifo, o => new KeywordGroup(o, escape, failure, close), code);
-      return open;
-    }*/
-
-    public Keyword Fifo(SegmentOptions options)
-    {
-      return new Keyword(GetHeadPattern(), KeywordType.OpenCloseFifo, _code);
+      return new Keyword(GetHeadPattern(), CommandType.OpenCloseFifo, _code);
     }
 
     public Keyword Escape()
@@ -265,16 +241,16 @@ namespace Sugarmaple.Namumark.Parser.Keywords
 
     public Keyword AccumulateAsList()
     {
-      return new Keyword(GetPattern(), KeywordType.AccumulateAsList, _code);
+      return new Keyword(GetPattern(), CommandType.AccumulateAsList, _code);
     }
 
     public Keyword Intact()
     {
-      return new Keyword(GetPattern(), KeywordType.Intact, _code);
+      return new Keyword(GetPattern(), CommandType.Intact, _code);
     }
 
     public static KeywordBuilder Create(SyntaxCode code = SyntaxCode.None) => new KeywordBuilder(code);
-    public static Keyword Failer(Keyword keyword) => new Keyword(keyword.Pattern, KeywordType.Fail);
+    public static Keyword Failer(Keyword keyword) => new Keyword(keyword.Pattern, CommandType.Fail);
 
     public override string ToString()
     {
@@ -286,24 +262,28 @@ namespace Sugarmaple.Namumark.Parser.Keywords
     private const string EscapeBackslash = @"(?<!\\)(\\\\)*";
 
     #region Private Functions
-    private int MakeSlot(SegmentOptions options) => MakeGroup(options.HasFlag(SingleLine) ? @"[^\n]*?": @".*?", ToPatternGroup(options));
+    private int MakeSlot(SlotOptions options)
+    {
+      var result = MakeGroup(options.HasFlag(SingleLine) ? @"[^\n]*?": @".*?");
+      if(options.HasFlag(Markable))
+        markableGroup = result - 1;
+      return result;
+    }
 
-    private int MakeGroup(string content, PatternGroup ptGroup)
+    private int MakeGroup(string content)
     {
       Append('(');
       Append(content);
       Append(')');
-      groups.Add(ptGroup);
-      return ++groupNum;
+      return groupNum++;
     }
 
-    private int MakeGroup(Action callback, PatternGroup ptGroup)
+    private int MakeGroup(Action callback)
     {
       Append('(');
       callback();
       Append(')');
-      groups.Add(ptGroup);
-      return ++groupNum;
+      return groupNum++;
     }
 
     private void MakeNonCapturingGroup(Action callback)
@@ -327,7 +307,14 @@ namespace Sugarmaple.Namumark.Parser.Keywords
           AppendEscaping(value);
       else
         Append(value, repeatCount);
-    }    
+    }
+
+    private void AppendEscaping(string[] items, char border)
+    {
+      foreach(var o in items)
+        _headBuffer.Append(Regex.Escape(o)).Append(border);
+      _headBuffer.Length--;
+    }
 
     private void PrependTail(string value)
     {
@@ -365,17 +352,6 @@ namespace Sugarmaple.Namumark.Parser.Keywords
     #endregion
     #endregion
 
-    private PatternGroup ToPatternGroup(SegmentOptions options)
-    {
-      if(options.HasFlag(SegmentOptions.Tag))
-        return PatternGroup.Tag;
-      if(options.HasFlag(SegmentOptions.Parameter))
-        return PatternGroup.Parameter;
-      if(options.HasFlag(SegmentOptions.Level))
-        return PatternGroup.Level;
-      return PatternGroup.None;
-    }
-
     const string MetaChars = @"\*+?|{[()^$.#";
     private static bool IsMetachar(char c) => MetaChars.Contains(c);
     private static char MatchedChar(char c)
@@ -402,7 +378,7 @@ namespace Sugarmaple.Namumark.Parser.Keywords
         _headBuffer.Append(_tailBuffer.Pop());
       var raw = _headBuffer.ToString();
       _headBuffer.ToPool();
-      return new PatternInfo(raw, 1, isAccumulating, groups.ToArray());
+      return new PatternInfo(raw, 1, isAccumulating, markableGroup);
     }
 
     private PatternInfo GetPattern()
@@ -413,7 +389,7 @@ namespace Sugarmaple.Namumark.Parser.Keywords
 
     private PatternInfo CreatePattern(string raw)
     {
-      return new PatternInfo(raw, groupNum, isAccumulating, groups.ToArray());
+      return new PatternInfo(raw, groupNum, isAccumulating, markableGroup);
     }
     #endregion
     #endregion

@@ -1,10 +1,9 @@
 namespace Sugarmaple.Namumark.Parser
 {
-  internal enum KeywordType: byte
+  internal enum CommandType: byte
   {
     None,
     Intact,
-    IntactAndMarkInside,
     OpenLifo,
     OpenCloseFifo,
     Close,

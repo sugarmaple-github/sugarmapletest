@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Linq;
 using Sugarmaple.Namumark.Parser;
+using Sugarmaple.Namumark.Parser.Tokens;
 #if VS
 
 using System.Text.RegularExpressions;
@@ -41,14 +42,14 @@ namespace SugarmapleUnitTest
       }
     }
 
-    static string tokenToString(Token token)
+    static string tokenToString(ElementToken token)
     {
       return @$"{{
         SyntaxCode: {token.SyntaxCode}
         Argument:
-          Tag: {token.Argument.Tag}
-          Parameter: {token.Argument.Parameter}
-          Level: {token.Argument.Level}
+          Tag: {token.Argument[1]}
+          Parameter: {token.Argument[2]}
+          Level: {token.Argument[3]}
 }}";
     }
 
