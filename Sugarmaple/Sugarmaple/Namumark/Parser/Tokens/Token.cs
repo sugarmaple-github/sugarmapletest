@@ -4,6 +4,7 @@ namespace Sugarmaple.Namumark.Parser.Tokens
   {
     public int Index { get; }
     public int Length { get; }
+    public int End => Index + Length;
     public TokenizeOperation Operation { get; }
 
     public Token(int index, int length, TokenizeOperation operation)

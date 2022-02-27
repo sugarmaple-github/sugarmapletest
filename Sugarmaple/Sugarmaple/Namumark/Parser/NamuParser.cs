@@ -5,13 +5,15 @@ namespace Sugarmaple.Namumark.Parser
 {
   internal class NamuParser
   {
-    private readonly NamuTokenizer _tokenizer = NamuTokenizer.Instance;
+    //private readonly NamuTokenizer _tokenizer = NamuTokenizer.Instance;
     private readonly NamuElementFactory _elementFactory = NamuElementFactory.Instance;
 
     public IEnumerable<INode> GetNodes(Wiki wiki, Document document, string source)
     {
-      foreach(var token in _tokenizer.GetTokens(source))
+      var tokenizer = Namumark.GetTokenizer(source);
+      while(!tokenizer.IsEnd)
       {
+        var token = tokenizer.GetToken();
         yield return _elementFactory.Create(wiki, document, token);
       }
     }

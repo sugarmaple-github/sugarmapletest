@@ -19,5 +19,6 @@ namespace Sugarmaple.Namumark.Parser
     //리스트가 앞에 등장했다면, 개행으로서 누적됩니다.
     //그렇지 않다면, 들여쓰기를 시작합니다.
     AccumulateAsLine,
+    Complex,
   }
 }

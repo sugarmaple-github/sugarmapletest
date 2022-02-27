@@ -24,6 +24,8 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       _tailBuffer = new Stack<char>();
     }
 
+    public static Keyword NewLine = new Keyword(new PatternInfo(@"\n", 1, false, 0), CommandType.Fail);
+
     #region Build Methods
     //온전함
     //선입선출 = 디자인
@@ -58,6 +60,13 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       return this;
     }
 
+    public KeywordBuilder LineEnd()
+    {
+      Append('\\');
+      Append('n');
+      return this;
+    }
+
     public KeywordBuilder BothEnd(char value)
     {
       AppendBothSide(value);
@@ -87,11 +96,21 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       return this;
     }
 
-    public KeywordBuilder Options(params char[] chars)
+    public KeywordBuilder Class(params char[] chars)
     {
       Append('[');
       foreach(var o in chars)
         Append(o);
+      Append(']');
+      return this;
+    }
+
+    public KeywordBuilder Quantity(int from, int to)
+    {
+      Append('[');
+      Append(from);
+      Append(',');
+      Append(to);
       Append(']');
       return this;
     }
@@ -101,6 +120,7 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       foreach(var o in children)
         _headBuffer.Append(o).Append('|');
       _headBuffer.Length--;
+      groupNum += children.Select(o => o.groupNum - 1).Sum();
       return this;
     }
 
@@ -128,7 +148,21 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       return this;
     }
 
-    public KeywordBuilder Group(params KeywordBuilder[] options) => Group(SlotOptions.None, options.Select(o => o.ToString()).ToArray());
+    public KeywordBuilder Group(params KeywordBuilder[] options)
+    {
+      Group(SlotOptions.None, options.Select(o => o.ToString()).ToArray());
+      groupNum += options.Select(o => o.groupNum - 1).Sum();
+      return this;
+    }
+
+    public KeywordBuilder Group(params Keyword[] options)
+    {
+      var patterns = options.Select(o => o.Pattern);
+      MakeGroup(() => Append(patterns.Select(o => o.Raw), '|'));
+      Group(SlotOptions.None, options.Select(o => o.ToString()).ToArray());
+      groupNum += options.Select(o => o.groupNum - 1).Sum();
+      return this;
+    }
 
     public KeywordBuilder GroupBetween(char border, SlotOptions options)
     {
@@ -178,12 +212,12 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       return this;
     }
 
+    const string EndLine = @"\n?$";
     public KeywordBuilder GroupUntilLineEnd(SlotOptions options = SlotOptions.None)
     {
       options |= SlotOptions.SingleLine;
-      const string EndLine = @"\n?$";
       MakeSlot(options);
-      Append(EndLine);
+      Append("\n");
       return this;
     }
 
@@ -223,14 +257,19 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       var openCommand = new OpenTokenCommand(CommandType.OpenLifo, _code, close!.Command, fails,
       (OpenTokenCommand o) => {
         open = new Keyword(GetHeadPattern(), o);
-        return isPrivate ? new Tokenizer(open!, close!) : null;
+        return isPrivate ? new Context(open!, close!) : null;
       });
       return (open!, close);
     }
 
     public Keyword Fifo(SlotOptions options)
     {
-      return new Keyword(GetHeadPattern(), CommandType.OpenCloseFifo, _code);
+      OpenTokenCommand command;
+      if (options.HasFlag(SingleLine))
+        command = CreateOpenCloseSelf(CommandType.OpenCloseFifo, _code, NewLine.Command);
+      else
+        command = CreateOpenCloseSelf(CommandType.OpenCloseFifo, _code);
+      return new Keyword(GetHeadPattern(), command);
     }
 
     public Keyword Escape()
@@ -244,6 +283,15 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       return new Keyword(GetPattern(), CommandType.AccumulateAsList, _code);
     }
 
+    public Keyword AccumulateAsLine()
+    {
+      return new Keyword(GetPattern(), CommandType.AccumulateAsLine, _code);
+    }
+    //(^( (\*|1\.|A\.|I\.) ?| |>)*(-{4,9}$|\|))
+    //1. 하위 그룹별 Command가 별도로 필요. -> ComplexCommand 안에서 해결해보기
+    //2. match 하나당 여러 번의 처리가 필요할 수도 있음.
+      //그에 따라 별도 버퍼 필요성.
+    
     public Keyword Intact()
     {
       return new Keyword(GetPattern(), CommandType.Intact, _code);
@@ -275,7 +323,7 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       Append('(');
       Append(content);
       Append(')');
-      return groupNum++;
+      return ++groupNum;
     }
 
     private int MakeGroup(Action callback)
@@ -283,7 +331,7 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       Append('(');
       callback();
       Append(')');
-      return groupNum++;
+      return ++groupNum;
     }
 
     private void MakeNonCapturingGroup(Action callback)
@@ -309,6 +357,13 @@ namespace Sugarmaple.Namumark.Parser.Keywords
         Append(value, repeatCount);
     }
 
+    private void Append(string[] items, char border)
+    {
+      foreach(var o in items)
+        _headBuffer.Append(o).Append(border);
+      _headBuffer.Length--;
+    }
+
     private void AppendEscaping(string[] items, char border)
     {
       foreach(var o in items)
@@ -330,7 +385,7 @@ namespace Sugarmaple.Namumark.Parser.Keywords
     }
 
     private void PrependTailGroup(int groupCode) => PrependTail($@"\k<{groupCode}>");
-    
+    //(^( (\*|[1AI]\.) ?|[ >])*(-{4,9}$|\|))
     private void AppendBothSide(char value)
     {
       PrependTailEscaping(MatchedChar(value));
@@ -344,9 +399,12 @@ namespace Sugarmaple.Namumark.Parser.Keywords
         PrependTailEscaping(MatchedChar(value));
     }
 
+    public static implicit operator string(KeywordBuilder o) => o.ToString();
+    
     #region basic operator
     private void Append(char value) => _headBuffer.Append(value);
     private void Append(char value, int repeatCount) => _headBuffer.Append(value, repeatCount);
+    private void Append(int value) => _headBuffer.Append(value);
     private void Append(string value) => _headBuffer.Append(value);
     private void PrependTail(char value) => _tailBuffer.Push(value);
     #endregion
@@ -390,6 +448,14 @@ namespace Sugarmaple.Namumark.Parser.Keywords
     private PatternInfo CreatePattern(string raw)
     {
       return new PatternInfo(raw, groupNum, isAccumulating, markableGroup);
+    }
+
+    private static OpenTokenCommand CreateOpenCloseSelf(CommandType type, SyntaxCode code, TokenCommand? fail = null)
+    {
+      var fails = new List<TokenCommand>();
+      if(fail != null)
+        fails.Add(fail);
+      return new OpenTokenCommand(type, code, null, fails);
     }
     #endregion
     #endregion

@@ -8,14 +8,14 @@ using Sugarmaple.Namumark.Parser.Tokens;
 
 namespace Sugarmaple.Namumark.Parser
 {
-  internal class Tokenizer
+  internal class Context
   {
     private readonly PatternInfo[] _patterns;
     private readonly Regex _regex;
     private readonly List<TokenCommand>[] _commands;
     private readonly List<int> _namedGroupIndice;
 
-    public Tokenizer(params Keyword[] keywords)
+    public Context(params Keyword[] keywords)
     {
       _patterns = keywords.Select(o => o.Pattern).ToArray();  
       _regex = BuildRegex(keywords);
@@ -35,13 +35,11 @@ namespace Sugarmaple.Namumark.Parser
           var argument = m.Groups.Cast<Group>()
             .Skip(_namedGroupIndice[i]+1).Take(pattern.GroupNum-1)
             .Select(o => new PatternGroup(source, o.Index, o.Length, groupIndex++ == pattern.MarkableGroup)).ToArray();
-
           return new PatternMatch(source, m.Index, m.Length, argument, _commands[i]);
         }
       }
       return null;
     }
-    #endregion
 
     #region Constructor Helper Build Methods
     private static Regex BuildRegex(Keyword[] keywords)
@@ -66,6 +64,7 @@ namespace Sugarmaple.Namumark.Parser
         ret[i] = new List<TokenCommand>();
         ret[i].Add(keywords[i].Command);
       }
+      
       for (int i = 0; i < keywords.Length - 1; i++)
       {
         for (int j = i + 1; j < keywords.Length; j++)

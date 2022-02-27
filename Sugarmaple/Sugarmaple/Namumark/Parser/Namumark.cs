@@ -6,18 +6,22 @@ using static Sugarmaple.Namumark.Parser.Keywords.KeywordBuilder;
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("SugarmapleUnitTest")]
 namespace Sugarmaple.Namumark.Parser
 {
-  internal class NamuTokenizer: Tokenizer
+  internal static class Namumark
   {
-    private NamuTokenizer(): base(CreateKeywords()) {}
+    //private NamuTokenizer(): base(CreateKeywords()) {}
     
-    private static NamuTokenizer? _instance;
-    public static NamuTokenizer Instance => _instance ??= new NamuTokenizer();
+    private static Context? _instance;
+    public static Context Instance => _instance ??= CreateContext();
+    public static Tokenizer GetTokenizer(string source)
+    {
+      return new Tokenizer(Instance, source);
+    }
 
     private static readonly string[] MacroNames = new[] {
       "age", "br", "clearfix", "date", "datetime", "dday", "footnote", "include", "kakaotv", "navertv", "nicovideo", "pagecount", "ruby", "tableofcontents", "youtube", "각주", "목차"
     };
 
-    private static Keyword[] CreateKeywords()
+    private static Context CreateContext()
     {
       Keyword Heading = Create(SyntaxCode.Heading).LineStart().BothEnd('=', 1, 6).BothEnd('#', 0, 1).GroupBetween(' ', Markable).Intact();
       (Keyword Open, Keyword Close) LiteralBrace = Create(SyntaxCode.LiteralBrace).BothEnd('{', 3).LifoPrivate();
@@ -26,7 +30,7 @@ namespace Sugarmaple.Namumark.Parser
 
       (Keyword Open, Keyword Close) MarkupBrace = Create(SyntaxCode.MarkupBrace).Const('{', 3)
         .Options(
-          Create().Group(Create().Options('+', '-').Range(1, 5)),
+          Create().Group(Create().Class('+', '-').Range(1, 5)),
           Create().Group(@"#!wiki", @"#!folding").GroupUntilLineEnd())
         .LifoPrivate(Markable, Escape, Failer(Heading), LiteralBrace.Close);
 
@@ -50,7 +54,15 @@ namespace Sugarmaple.Namumark.Parser
       .BorderRecursive{'{', 3}.Group(@"#!html", null).Group();*/
 
       Keyword Comment = Create(SyntaxCode.Comment).LineStart().Const('#', 2).GroupUntilLineEnd().Intact();
-      Keyword List = Create(SyntaxCode.List).LineStart(true).Const(' ').Group("*", "1.", "A.", "I.").ConstOption(' ').AccumulateAsList();
+      Keyword List = Create().LineStart()
+        .Group(
+          Create(SyntaxCode.List).Const(' ').Group("*", Create().Class('1', 'A', 'I').Const('.')).ConstOption(' ').AccumulateAsList(),
+          Create(SyntaxCode.List).Class(' ', '>').AccumulateAsLine()
+        ).Star()
+        .Group(
+          Create(SyntaxCode.Horizon).Const('-').Quantity(3, 6).LineEnd().Intact(),
+          Create(SyntaxCode.Table).Const('|').Fifo(SingleLine)
+        ).Complex();
       //Keyword Indent = LineStart(true).Const(' ').GroupOptions()
     //구문이 언제 끝나는가?
 
@@ -61,11 +73,11 @@ namespace Sugarmaple.Namumark.Parser
       Keyword StrikeThrough2 = Create(SyntaxCode.StrikeThrough).BothEnd('-', 2).Fifo(SingleLine);
       Keyword Superscript = Create(SyntaxCode.Superscript).BothEnd('^', 2).Fifo(SingleLine);
       Keyword Subscript = Create(SyntaxCode.Subscript).BothEnd(',', 2).Fifo(SingleLine);
-      return new Keyword[] {Heading, Macro, MarkupBrace.Open, LiteralBrace.Open, Link.Open, Link.Close, LinkOneLine, Footnote.Open, Footnote.Close,
-      Escape, Comment, List, Bold, Italic, UnderLine, StrikeThrough, StrikeThrough2, Superscript, Subscript};
+      Keyword NewLine = KeywordBuilder.NewLine;
+      return new Context(Heading, Macro, MarkupBrace.Open, LiteralBrace.Open, Link.Open, LinkOneLine, Link.Close, Footnote.Open, Footnote.Close,
+      Escape, Comment, List, Bold, Italic, UnderLine, StrikeThrough, StrikeThrough2, Superscript, Subscript, NewLine);
     }
     
-
     #region Simplify Function
     static KeywordBuilder Create(SyntaxCode code = SyntaxCode.None)
     {
