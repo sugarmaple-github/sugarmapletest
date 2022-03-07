@@ -33,7 +33,7 @@ class Program {
         Console.WriteLine(result2);
         break;
       case 3:
-        client!.DoTest();
+        //client!.DoTest();
         break;
       case -1:
         return false;

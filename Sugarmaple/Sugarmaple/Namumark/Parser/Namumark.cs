@@ -23,20 +23,23 @@ namespace Sugarmaple.Namumark.Parser
 
     private static Context CreateContext()
     {
-      Keyword Heading = Create(SyntaxCode.Heading).LineStart().BothEnd('=', 1, 6).BothEnd('#', 0, 1).GroupBetween(' ', Markable).Intact();
+      Keyword Heading = Create(SyntaxCode.Heading).LineStart()
+        .BothEndGroup(Create().Const('=').FromMtoN(1, 6))
+        .BothEndGroup(Create().Const('=').ZeroOrOne())
+        .GroupBetween(' ', Markable).Intact();
       (Keyword Open, Keyword Close) LiteralBrace = Create(SyntaxCode.LiteralBrace).BothEnd('{', 3).LifoPrivate();
 
       Keyword Escape = Create().Const('\\').Escape();
 
       (Keyword Open, Keyword Close) MarkupBrace = Create(SyntaxCode.MarkupBrace).Const('{', 3)
-        .Options(
-          Create().Group(Create().Class('+', '-').Range(1, 5)),
-          Create().Group(@"#!wiki", @"#!folding").GroupUntilLineEnd())
+        .GroupAlt(
+          Create().GroupAlt(Create().Class('+', '-').FromMtoN(1, 5)),
+          Create().GroupAlt(@"#!wiki", @"#!folding").GroupUntilLineEnd())
         .LifoPrivate(Markable, Escape, Failer(Heading), LiteralBrace.Close);
 
       Keyword LinkOneLine = Create(SyntaxCode.Link).GroupBetween('[', 2, SingleLine).Intact();
       
-      Keyword Macro = Create(SyntaxCode.Macro).BothEnd('[').Group(MacroNames).GroupBetween('(', Optional).Intact();
+      Keyword Macro = Create(SyntaxCode.Macro).BothEnd('[').GroupAlt(MacroNames).GroupBetween('(', Optional).Intact();
 
       (Keyword Open, Keyword Close) Link = Create(SyntaxCode.Link).BothEnd('[', 2).GroupUntil('#', SingleLine).GroupUntil('|', SingleLine).Lifo();
 
@@ -55,12 +58,12 @@ namespace Sugarmaple.Namumark.Parser
 
       Keyword Comment = Create(SyntaxCode.Comment).LineStart().Const('#', 2).GroupUntilLineEnd().Intact();
       Keyword List = Create().LineStart()
-        .Group(
-          Create(SyntaxCode.List).Const(' ').Group("*", Create().Class('1', 'A', 'I').Const('.')).ConstOption(' ').AccumulateAsList(),
+        .GroupAlt(
+          Create(SyntaxCode.List).Const(' ').GroupAlt("*", Create().Class('1', 'A', 'I').Const('.')).Const(' ').ZeroOrOne().AccumulateAsList(),
           Create(SyntaxCode.List).Class(' ', '>').AccumulateAsLine()
-        ).Star()
-        .Group(
-          Create(SyntaxCode.Horizon).Const('-').Quantity(3, 6).LineEnd().Intact(),
+        ).ZeroOrMore()
+        .GroupAlt(
+          Create(SyntaxCode.Horizon).Const('-').FromMtoN(4, 9).LineEnd().Intact(),
           Create(SyntaxCode.Table).Const('|').Fifo(SingleLine)
         ).Complex();
       //Keyword Indent = LineStart(true).Const(' ').GroupOptions()

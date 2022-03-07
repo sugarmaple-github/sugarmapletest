@@ -130,7 +130,6 @@ namespace Sugarmaple.Namumark.Parser
           break;
         case CommandType.AccumulateAsList:
           return ExecuteAccumulateList(command);
-          break;
         case CommandType.AccumulateAsLine:
           break;
       }
@@ -139,15 +138,8 @@ namespace Sugarmaple.Namumark.Parser
 
     private ElementToken ExecuteIntact(SyntaxCode code)
     {
-      IEnumerable<ElementToken>? children = null;
-      foreach (var g in Match.Groups)
-      {
-        if(g.IsWikiBlock)
-        {
-          children = GetSubstringTokens(g.Index, g.End);
-          break;
-        }
-      }
+      var group = Match.Groups.Where(o => o.IsWikiBlock).First();
+      var children = GetSubstringTokens(group.Index, group.End);
       return CreateToken(code, children);
     }
 

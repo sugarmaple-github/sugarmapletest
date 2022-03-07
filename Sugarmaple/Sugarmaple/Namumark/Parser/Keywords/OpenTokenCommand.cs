@@ -15,9 +15,9 @@ namespace Sugarmaple.Namumark.Parser.Keywords
 
     public OpenTokenCommand(CommandType type, TokenCommand closer): this(type, SyntaxCode.None, closer) {}
 
-    public OpenTokenCommand(CommandType type, SyntaxCode code, TokenCommand closer): this(type, code, closer, new List<TokenCommand>()) {}
+    public OpenTokenCommand(CommandType type, SyntaxCode code, TokenCommand closer): this(type, code, closer, new TokenCommand[0]) {}
 
-    public OpenTokenCommand(CommandType type, SyntaxCode code, TokenCommand? closer, List<TokenCommand> fails, ContextCallback? callback = null): base(type, code)
+    public OpenTokenCommand(CommandType type, SyntaxCode code, TokenCommand? closer, IEnumerable<TokenCommand> fails, ContextCallback? callback = null): base(type, code)
     {
       _closer = closer ?? this;
       _failKeys = fails.ToArray();

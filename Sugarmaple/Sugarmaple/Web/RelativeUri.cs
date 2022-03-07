@@ -1,9 +1,10 @@
+using System;
 using System.Text;
 using Sugarmaple.Text;
 
 namespace Sugarmaple.Web
 {
-  internal struct RelativeUri: System.IDisposable
+  internal struct RelativeUri: IDisposable
   {
     private StringBuilder builder;
     private bool isQuery;

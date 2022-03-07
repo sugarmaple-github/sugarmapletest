@@ -7,19 +7,25 @@ namespace Sugarmaple.Text
   internal static class StringExtension
   {
     static Stack<StringBuilder> pool = new();
-    
-    public static StringBuilder Obtain()
+
+    const string RegexMeta = @"\*+?|{[()^$.#";
+    public static bool IsRegexMeta(this char c) => RegexMeta.Contains(c);
+    public static char GetReverse(this char c)
     {
-        if (pool.Count == 0)
-        {
-          return new StringBuilder(1024);
-        }
-      return pool.Pop().Clear();
+      return c switch {
+        '(' => ')',
+        '[' => ']',
+        '{' => '}',
+        _ => c,
+      };
     }
 
-    public static void ToPool(this StringBuilder element)
+    public static bool HasOnlyAscii(this string value)
     {
-      pool.Push(element);
+      foreach(var c in value)
+        if(c > sbyte.MaxValue)
+          return false;
+      return true;
     }
   }
 }

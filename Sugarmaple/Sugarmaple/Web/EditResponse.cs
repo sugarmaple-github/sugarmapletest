@@ -2,32 +2,10 @@ using System.Text.Json;
 
 namespace Sugarmaple.Web
 {
-  public struct EditResponse: System.IDisposable
+  public struct EditResponse
   {
-    internal EditResponse(JsonDocument rootElement)
-    {
-      originData = rootElement;
-    }
-
-    private readonly JsonDocument originData;
-    public string? Status => GetProperty("status").GetString();
-    public int Rev
-    {
-      get
-      {
-        var output = GetProperty("rev").GetInt32();
-        return output;
-      }
-    }
-
-    private JsonElement GetProperty(string name) => originData.RootElement.GetProperty(name);
-
-    public override string ToString() => originData.RootElement.ToString();
-
-    public void Dispose()
-    {
-      originData.Dispose();
-    }
+    public string Status { get; }
+    public int Rev { get; }
   }
   
   public enum EditStatus

@@ -27,7 +27,7 @@ namespace SugarmapleUnitTest
       //foreac
     }
     
-    [TestMethod]
+    //[TestMethod]
     public void TokenTest()
     {
       var text = File.ReadAllText(@$"{Directory.GetCurrentDirectory()}/TestInput/doc.txt");
@@ -62,7 +62,7 @@ namespace SugarmapleUnitTest
       return builder.ToString();
     }
 
-    //[TestMethod]
+    [TestMethod]
     public void TestMethodRegex()
     {
       var context = Namumark.Instance;
@@ -70,7 +70,33 @@ namespace SugarmapleUnitTest
       var regexRaw = context.GetFieldValue<Regex, Context>("_regex");
       Trace.WriteLine(regexRaw);
     }
-  }
 
-  
+    /*internal void DoTest()
+    {
+      var json = JsonDocument.Parse("{\"namespaces\":[{\"namespace\":\"사용자\",\"count\":1}],\"backlinks\":[{\"document\":\"사용자:koreapyj/test1\",\"flags\":\"link\"}],\"from\":null,\"until\":null}");
+      var document = Console.ReadLine()!;
+      string query = $"";
+      var uri = CreateUri().AddPath("backlink").AddPath(document);
+      var doc = GetJson(uri);
+      var root = doc.RootElement;
+      var backlinks = root.GetProperty("backlinks").EnumerateArray();
+      foreach (var l in backlinks)
+      {
+        Console.WriteLine(l);
+      }
+      var r = new BacklinkResponse(doc);
+      foreach (var b in r.Backlinks)
+      {
+        Console.WriteLine(b);
+      }
+      foreach(var n in r.Namespaces)
+        Console.WriteLine($"이름공간: {n}");
+      //Console.WriteLine(r.Backlinks.Count());
+      //var output = ReadFromJson<BacklinkResponse>(content).Result;
+      //Console.WriteLine(output);
+      //var editResp = GetEditResponseAsync("아무거나", "되나").Result;
+      //Console.WriteLine(editResp);
+      Console.ReadLine();
+    }*/
+  }
 }

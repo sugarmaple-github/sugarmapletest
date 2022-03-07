@@ -11,7 +11,9 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       Command = command;
     }
 
-    public Keyword(PatternInfo pattern, CommandType type = CommandType.None, SyntaxCode code = SyntaxCode.None): this(pattern, new TokenCommand(type, code)) {}
+    public Keyword(PatternInfo pattern,
+                   CommandType type = CommandType.None,
+                   SyntaxCode code = SyntaxCode.None): this(pattern, new TokenCommand(type, code)) {}
 
     public PatternInfo Pattern { get; }
     public TokenCommand Command { get; }
