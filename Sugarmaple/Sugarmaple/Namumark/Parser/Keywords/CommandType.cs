@@ -20,5 +20,7 @@ namespace Sugarmaple.Namumark.Parser
     //그렇지 않다면, 들여쓰기를 시작합니다.
     AccumulateAsLine,
     Complex,
+    //해당 그룹에서 해당 문법 맥락에 따라 토크나이징을 다시 진행합니다.
+    Context,    
   }
 }

@@ -6,12 +6,12 @@ namespace Sugarmaple.Web
 {
   internal struct RelativeUri: IDisposable
   {
-    private StringBuilder builder;
+    private readonly StringBuilder _builder;
     private bool isQuery;
 
     public RelativeUri(string basePath)
     {
-      builder = new StringBuilder(basePath);
+      _builder = StringBuilderPool.Obtain().Append(basePath);
       isQuery = false;
     }
 
@@ -19,7 +19,7 @@ namespace Sugarmaple.Web
 
     public RelativeUri AddPath(string path) 
     {
-      builder.Append('/').Append(path);
+      _builder.Append('/').Append(path);
       return this;
     }
 
@@ -27,7 +27,7 @@ namespace Sugarmaple.Web
     public RelativeUri AddQuery(string name, string value)
     {
       isQuery = true;
-      builder
+      _builder
         .Append(isQuery ? '&' : '?')
         .Append(name)
         .Append('=')
@@ -37,12 +37,12 @@ namespace Sugarmaple.Web
 
     public override string ToString()
     {
-      return builder.ToString();
+      return _builder.ToString();
     }
 
     public void Dispose()
     {
-      builder.ToPool();
+      _builder.ToPool();
     }
 
     public static implicit operator string(RelativeUri u) => u.ToString();

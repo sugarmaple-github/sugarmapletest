@@ -4,17 +4,23 @@ namespace Sugarmaple.Web
 {
   public class InvalidApiTokenException: Exception
   {
-    public InvalidApiTokenException(SeedClient client): this($"{client}'s api token is not valid.")
+    internal InvalidApiTokenException(SeedClient client): this($"{client}'s api token is not valid.")
     {
 
     }
 
-    public InvalidApiTokenException(SeedClient client, bool expired = false): this(expired ? ExpiredMessage(client) : InvalidEntryMessage(client))
+    internal InvalidApiTokenException(SeedClient client, bool expired = false): this(expired ? ExpiredMessage(client) : InvalidEntryMessage(client))
     {
 
     }
 
-    public InvalidApiTokenException(string? message): base(message)
+    internal InvalidApiTokenException(string message, Exception inner)
+        : base(message, inner)
+    {
+
+    }
+
+    internal InvalidApiTokenException(string? message): base(message)
     {
 
     }

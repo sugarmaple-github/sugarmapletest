@@ -21,7 +21,6 @@
 /home/runner/Some-Test/bin/Debug/netcoreapp5.0/main.dll
 /home/runner/Some-Test/bin/Debug/netcoreapp5.0/ref/main.dll
 /home/runner/Some-Test/bin/Debug/netcoreapp5.0/main.pdb
-/home/runner/Some-Test/obj/Debug/netcoreapp5.0/main.csprojAssemblyReference.cache
 /home/runner/Some-Test/obj/Debug/netcoreapp5.0/main.GeneratedMSBuildEditorConfig.editorconfig
 /home/runner/Some-Test/obj/Debug/netcoreapp5.0/main.AssemblyInfoInputs.cache
 /home/runner/Some-Test/obj/Debug/netcoreapp5.0/main.AssemblyInfo.cs
@@ -30,3 +29,4 @@
 /home/runner/Some-Test/obj/Debug/netcoreapp5.0/ref/main.dll
 /home/runner/Some-Test/obj/Debug/netcoreapp5.0/main.pdb
 /home/runner/Some-Test/obj/Debug/netcoreapp5.0/main.genruntimeconfig.cache
+/home/runner/Some-Test/obj/Debug/netcoreapp5.0/main.csproj.AssemblyReference.cache

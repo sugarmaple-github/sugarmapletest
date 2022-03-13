@@ -6,8 +6,6 @@ namespace Sugarmaple.Text
 {
   internal static class StringExtension
   {
-    static Stack<StringBuilder> pool = new();
-
     const string RegexMeta = @"\*+?|{[()^$.#";
     public static bool IsRegexMeta(this char c) => RegexMeta.Contains(c);
     public static char GetReverse(this char c)

@@ -6,7 +6,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Linq;
 using Sugarmaple.Namumark.Parser;
-using Sugarmaple.Namumark.Parser.Tokens;
 #if VS
 
 using System.Text.RegularExpressions;
@@ -27,32 +26,32 @@ namespace SugarmapleUnitTest
       //foreac
     }
     
-    //[TestMethod]
+    [TestMethod]
     public void TokenTest()
     {
+      TestMethodRegex();
+      WriteTokens();
+    }
+    
+    public void WriteTokens()
+    {
       var text = File.ReadAllText(@$"{Directory.GetCurrentDirectory()}/TestInput/doc.txt");
-      var namumark = Namumark.GetTokenizer(text);
-      var startAt = 10;
+      var tokens = context.GetTokens(text);
       var count = 20;
-      for(int i = 0; i < startAt && !namumark.IsEnd; i++)
+      foreach (var token in tokens)
       {
-        var token = namumark.GetToken();
-      }
-      for(int i = startAt; i < count && !namumark.IsEnd; i++)
-      {
-        Trace.WriteLine(i);
-        Trace.WriteLine(namumark.IsEnd);
-        var token = namumark.GetToken();
         Trace.WriteLine(tokenToString(token));
+        if (count-- <= 0)
+          break;
       }
     }
 
-    static string tokenToString(ElementToken token)
+    static string tokenToString(NamuToken token)
     {
       var builder = new StringBuilder();
       builder.Append(@$"{{
         SyntaxCode: {token.SyntaxCode}
-        Argument: ");
+                     }}");
       foreach(var o in token.Argument.Select(o => o.Raw))
       {
         builder.AppendLine($"{o}");
@@ -62,13 +61,19 @@ namespace SugarmapleUnitTest
       return builder.ToString();
     }
 
-    [TestMethod]
+    NamumarkContext context = NamumarkContext.Instance;
+                     
+    //[TestMethod]
     public void TestMethodRegex()
     {
-      var context = Namumark.Instance;
-      
-      var regexRaw = context.GetFieldValue<Regex, Context>("_regex");
+      var regContext = context.GetFieldValue<NamumarkRegContext, NamumarkContext>("_regContext");
+      var regexRaw = regContext.GetFieldValue<Regex, NamumarkRegContext>("_regex");
       Trace.WriteLine(regexRaw);
+      var indice = regContext.GetFieldValue<List<int>, NamumarkRegContext>("_namedGroupIndice");
+      foreach(var index in indice)
+      {
+        Trace.WriteLine(index);
+      }
     }
 
     /*internal void DoTest()

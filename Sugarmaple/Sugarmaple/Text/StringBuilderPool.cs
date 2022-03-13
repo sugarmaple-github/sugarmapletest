@@ -6,7 +6,7 @@ namespace Sugarmaple.Text
 {
   internal static class StringBuilderPool
   {
-    static Stack<StringBuilder> pool = new();
+    static Stack<StringBuilder> pool = new Stack<StringBuilder>();
     
     public static StringBuilder Obtain()
     {

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+/*using System.Collections.Generic;
 using Sugarmaple.Namumark.Parser.Keywords;
 using static Sugarmaple.Namumark.Parser.Keywords.SlotOptions;
 using static Sugarmaple.Namumark.Parser.Keywords.KeywordBuilder;
@@ -56,7 +56,7 @@ namespace Sugarmaple.Namumark.Parser
     /*static Keyword NoMarkTripleBraceRegex { get; } = Create()
       .BorderRecursive{'{', 3}.Group(@"#!html", null).Group();*/
 
-      Keyword Comment = Create(SyntaxCode.Comment).LineStart().Const('#', 2).GroupUntilLineEnd().Intact();
+      /*Keyword Comment = Create(SyntaxCode.Comment).LineStart().Const('#', 2).GroupUntilLineEnd().Intact();
       Keyword List = Create().LineStart()
         .GroupAlt(
           Create(SyntaxCode.List).Const(' ').GroupAlt("*", Create().Class('1', 'A', 'I').Const('.')).Const(' ').ZeroOrOne().AccumulateAsList(),
@@ -88,4 +88,4 @@ namespace Sugarmaple.Namumark.Parser
     }
     #endregion
   }
-}
+}*/

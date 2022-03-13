@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+/*using System.Collections.Generic;
 using Sugarmaple.Dom;
 
 namespace Sugarmaple.Namumark.Parser
@@ -19,4 +19,4 @@ namespace Sugarmaple.Namumark.Parser
     }
     //확정된 토큰을 노드와 엘리먼트로 파싱
   }
-}
+}*/

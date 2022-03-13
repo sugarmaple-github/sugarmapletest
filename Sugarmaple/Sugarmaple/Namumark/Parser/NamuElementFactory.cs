@@ -18,7 +18,7 @@ namespace Sugarmaple.Namumark.Parser
       { Heading, (b, t) => new NamuHeadingElement(b, int.Parse(t[0].Raw), t[1] != null) },
     };
 
-    public NamuElement Create(Wiki wiki, Document document, ElementToken token)
+    public NamuElement Create(Wiki wiki, Document document, NamuToken token)
     {
       var basic = new DomBasicArgument(wiki, document, token.Index, token.Length, NodeType.Element);
       return _creators[token.SyntaxCode].Invoke(basic, token.Argument);

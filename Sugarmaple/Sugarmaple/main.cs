@@ -60,7 +60,7 @@ class Program {
   {
     Console.WriteLine("Please Write Api:");
     var api = Console.ReadLine()!;
-    client = new SeedClient(SeedWiki.TheSeedWiki, api);
+    client = new SeedClient("https://theseed.io", api);
     Console.WriteLine("Checked");
   }
 

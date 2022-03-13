@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using static Sugarmaple.Namumark.Parser.Keywords.SlotOptions;
 using Sugarmaple.Text;
 
@@ -12,13 +11,14 @@ namespace Sugarmaple.Namumark.Parser.Keywords
     private readonly SyntaxCode _code;
     private readonly RegexBuilder _head = new RegexBuilder();
     private readonly Stack<char> _tail = new Stack<char>();
+    //indice is reverse and +1
+    private readonly List<int> _tailBackRefIndice = new List<int>();
     private readonly List<TokenCommand> _groupCommands = new();
     private bool isAccumulating = false;
-    private int markableGroup = 0;
 
     public KeywordBuilder(SyntaxCode code) => _code = code;
 
-    public static Keyword NewLine = new Keyword(new PatternInfo(@"\n", 1, false, 0), CommandType.Fail);
+    public static Keyword NewLine = new Keyword(new PatternInfo(@"\n", 0, false), CommandType.Fail);
 
     #region Element Regex Methods
     public KeywordBuilder Const(char value, int repeatCount = 1)
@@ -43,8 +43,7 @@ namespace Sugarmaple.Namumark.Parser.Keywords
     { _head.ZeroOrMore(); return this; }
     public KeywordBuilder Group(string content)
     { _head.Group(content); return this; }
-    public KeywordBuilder GroupAlt(params string[] rawOptions) => GroupAlt(SlotOptions.None, rawOptions);
-    public KeywordBuilder GroupAlt(SlotOptions options, params string[] rawOptions)
+    public KeywordBuilder GroupAlt(params string[] rawOptions)
     { _head.GroupAlternative(rawOptions); return this; }
     #endregion
     
@@ -55,21 +54,21 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       TailConst(value.GetReverse(), repeatCount);
       return this;
     }
-    public KeywordBuilder BothEndGroup(string raw)
+    public KeywordBuilder BothEndGroup(KeywordBuilder builder)
     {
       TailPushGroup(_head.GroupNum);
-      _head.Group(raw);
+      _head.Group(builder.ToRegexBuilder());
       return this;
     }
 
-    public KeywordBuilder Options(params KeywordBuilder[] groups)
+    public KeywordBuilder GroupAlt(params KeywordBuilder[] groups)
     {
-      _head.GroupAlternative(groups.Cast<string>());
+      _head.GroupAlternative(groups.Select(o => o.ToRegexBuilder()));
       return this;
     }
     public KeywordBuilder GroupAlt(params Keyword[] groups)
     {
-      _head.GroupAlternative(groups.Select(o => ToString()));
+      _head.GroupAlternative(groups.Select(o => o.Pattern));
       _groupCommands.AddRange(groups.Select(o => o.Command));
       return this;
     }
@@ -90,7 +89,7 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       {
         _head.Const(open, repeatCount);
         GroupSlot(options);
-        TailConst(close, repeatCount);
+        _head.Const(close, repeatCount);
       }
     }
 
@@ -147,6 +146,13 @@ namespace Sugarmaple.Namumark.Parser.Keywords
     public static KeywordBuilder Create(SyntaxCode code = SyntaxCode.None) => new KeywordBuilder(code);
     public static Keyword Failer(Keyword keyword) => new Keyword(keyword.Pattern, CommandType.Fail);
 
+    public RegexBuilder ToRegexBuilder()
+    {
+      foreach (var c in _tail)
+        _head.Append(c);
+      return _head;
+    }
+
     public override string ToString()
     {
       var buffer = StringBuilderPool.Obtain();
@@ -167,7 +173,10 @@ namespace Sugarmaple.Namumark.Parser.Keywords
     private int GroupSlot(SlotOptions options)
     {
       if (options.HasFlag(Markable))
-        markableGroup = _head.GroupNum;
+      {
+        AddGroupCommand(_head.GroupNum, CreateCommand(CommandType.Context));
+        Console.WriteLine("Markable Slot Detected;");
+      }
       _head.Group(options.HasFlag(SingleLine) ? @"[^\n]*?": @".*?");
       return _head.GroupNum;
     }
@@ -189,9 +198,22 @@ namespace Sugarmaple.Namumark.Parser.Keywords
         --repeatCount;
       }
     }
-    private void TailPushGroup(int groupCode) => TailPush($@"\k<{groupCode}>");
+    //vaild if 0 <= groupCode < 10
+    private void TailPushGroup(int groupCode)
+    {
+      TailPush('>');
+      TailPush('0' + groupCode);
+      _tailBackRefIndice.Add(_tail.Count);  
+      TailPush(@"\k<");
+    }
+
+    private void AddGroupCommand(int index, TokenCommand command)
+    {
+      while (_groupCommands.Count < index)
+        _groupCommands.Add(TokenCommand.Empty);
+      _groupCommands.Add(command);
+    }
     #endregion
-    public static implicit operator string(KeywordBuilder o) => o.ToString();
     #region Factory
     private Keyword CreateOpenKeyword(Keyword close, IEnumerable<Keyword> fails, bool isPrivate)
     {
@@ -199,35 +221,36 @@ namespace Sugarmaple.Namumark.Parser.Keywords
       new OpenTokenCommand(CommandType.OpenLifo, _code, close.Command, fails.Select(o => o.Command),
       (OpenTokenCommand o) => {
         open = new Keyword(GetHeadPattern(), o);
-        return isPrivate ? new Context(open!, close!) : null;
+        return isPrivate ? new NamumarkRegContext(open!, close!) : null;
       });
       return open!;
     }
 
     private Keyword CreateKeyword(CommandType type)
     {
-      if(type == CommandType.Complex)
-        return new Keyword(GetFullPattern(), CreateComplexCommand());
-      return new Keyword(GetFullPattern(), type, _code);
+      var baseCommand = CreateCommand(type);
+      if(_groupCommands.Count > 0)
+      {
+        _groupCommands[0] = baseCommand;
+        return new Keyword(GetFullPattern(), new ComplexCommand(_groupCommands.ToArray()));
+      }
+      return new Keyword(GetFullPattern(), baseCommand);
     }
     private Keyword CreateKeywordHead(TokenCommand command) => new Keyword(GetHeadPattern(), command);
     private Keyword CreateKeywordTail(TokenCommand command) => new Keyword(GetTailPattern(), command);
 
-    private PatternInfo GetHeadPattern() => CreatePattern(_head);
-    private PatternInfo GetTailPattern() => CreatePattern(string.Concat(_tail));
-    private PatternInfo GetFullPattern() => CreatePattern(ToString());
-    private PatternInfo CreatePattern(string raw) => new PatternInfo(raw, _head.GroupNum, isAccumulating, markableGroup);
+    private PatternInfo GetHeadPattern() => CreatePattern(_head.ToString(), _head.GroupNum);
+    private PatternInfo GetTailPattern() => CreatePattern(string.Concat(_tail), 0);
+    private PatternInfo GetFullPattern() => CreatePattern(ToString(), _head.GroupNum);
+    private PatternInfo CreatePattern(string raw, int groupNum) => new PatternInfo(raw, groupNum, _tailBackRefIndice.Reverse().Select(o => raw.Length - o), isAccumulating);
 
-    private TokenCommand CreateCommand(CommandType type) => new TokenCommand(type);
+    private TokenCommand CreateCommand(CommandType type) => new TokenCommand(type, _code);
     private OpenTokenCommand CreateOpenCloseSelfCommand(CommandType type, TokenCommand? fail = null)
     {
       var fails = new List<TokenCommand>();
       if (fail != null) fails.Add(fail);
       return new OpenTokenCommand(type, _code, null, fails);
     }
-
-    private ComplexCommand CreateComplexCommand()
-      => new ComplexCommand(_groupCommands.ToArray());
     #endregion
     #endregion
   }

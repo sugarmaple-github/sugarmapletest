@@ -1,5 +1,7 @@
-run = " dotnet run"
+run = "dotnet run"
 entrypoint = "main.cs"
+
+hidden = ["bin", "obj"]
 
 [env]
 DOTNET_NOLOGO = "1"
@@ -10,3 +12,12 @@ language = "dotnet"
 
 [packager.features]
 packageSearch = true
+
+[nix]
+channel = "stable-21_11"
+
+[languages.csharp]
+pattern = "**/*.cs"
+
+  [languages.csharp.languageServer]
+  start = ["omnisharp", "--languageserver"]

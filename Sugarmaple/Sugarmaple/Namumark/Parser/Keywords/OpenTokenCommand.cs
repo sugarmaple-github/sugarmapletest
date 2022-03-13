@@ -7,9 +7,9 @@ namespace Sugarmaple.Namumark.Parser.Keywords
 {
   internal class OpenTokenCommand: TokenCommand
   {
-    public delegate Context? ContextCallback(OpenTokenCommand self);
+    public delegate NamumarkRegContext? ContextCallback(OpenTokenCommand self);
 
-    public Context? Context { get; }
+    public NamumarkRegContext? Context { get; }
     private readonly object _closer;
     private readonly object[] _failKeys;
 

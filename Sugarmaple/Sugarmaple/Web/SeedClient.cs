@@ -11,18 +11,16 @@ using Sugarmaple.Text;
 
 namespace Sugarmaple
 {
-  public class SeedClient
+  internal class SeedClient
   {
     private readonly HttpClient _client = new HttpClient();
   
     private string? _lastDocument;
     private string? _editToken = null;
-    public SeedWiki Wiki { get; }
 
-    public SeedClient(SeedWiki wiki, string apiToken)
+    public SeedClient(string wikiUri, string apiToken)
     {
-      Wiki = wiki;
-      _client.BaseAddress = wiki.Uri;
+      _client.BaseAddress = new Uri(wikiUri);
       UpdateApiToken(apiToken);
     }
 
@@ -116,16 +114,16 @@ namespace Sugarmaple
 
     private struct EditParameter
     {
-      public string Text { get; init; }
-      public string Log { get; init; }
-      public string Token { get; init; }
+      public string Text { get; set; }
+      public string Log { get; set; }
+      public string Token { get; set; }
     }
 
     private struct BacklinkParameter
     {
-      public string Namespace { get; init; }
-      public string From { get; init; }
-      public string Until { get; init; }
+      public string Namespace { get; set; }
+      public string From { get; set; }
+      public string Until { get; set; }
     }
 
     #region Utility

@@ -6,12 +6,12 @@ namespace Sugarmaple.Namumark.Parser.Tokens
   internal class PatternMatch: PatternGroup
   {
     public PatternGroup[] Groups { get; }
-    public IEnumerable<TokenCommand> Commands { get; }
+    public IEnumerable<TokenCommand> OverrideCommands { get; }
 
-    public PatternMatch(string text, int index, int length, PatternGroup[] groups, IEnumerable<TokenCommand> commands): base(text, index, length, false)
+    public PatternMatch(string text, int index, int length, PatternGroup[] groups, TokenCommand command, IEnumerable<TokenCommand> overrideCommands): base(text, index, length, command)
     {
       Groups = groups;
-      Commands = commands;
+      OverrideCommands = overrideCommands;
     }
   }
 }

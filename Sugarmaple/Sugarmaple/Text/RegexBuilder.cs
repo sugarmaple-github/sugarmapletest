@@ -1,19 +1,22 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Sugarmaple.Text
 {
-  public sealed class RegexBuilder: IDisposable
+  public interface IRegexInfo
+  {
+    string Raw { get; }
+    int GroupNum { get; }
+  }
+
+  public sealed class RegexBuilder: IRegexInfo, IDisposable
   {
     private readonly StringBuilder _buffer = StringBuilderPool.Obtain();
-    public int GroupNum { get; private set; } = 1;
+    string IRegexInfo.Raw => ToString();
+    public int GroupNum { get; private set; }
 
     public void Const(char value, int repeatCount = 1) => AppendEscaping(value, repeatCount);
     public void Const(string value) => Append(Regex.Escape(value));
@@ -29,13 +32,18 @@ namespace Sugarmaple.Text
     public void Class(char m, char n) => Append('[').Append(m).Append('-').Append(n).Append(']');
     public void Group(string value) => StartGroup().Append(value).Append(')');
     public void Group(Action callback) { StartGroup(); callback(); Append(')'); }
+    public void Group(IRegexInfo value)
+    {
+      StartGroup().Append(value.Raw).Append(')');
+      GroupNum += value.GroupNum;
+    }
     public void NonCaptureGroup(string value) => StartGroup().Append('?').Append(':').Append(value).Append(')');
     public void GroupAlternative(params string[] values) => GroupAlternative((IEnumerable<string>)values); //values don't have any regex groups.
     public void GroupAlternative(IEnumerable<string> values) => StartGroup().AppendJoin('|', values).Append(')');
-    public void GroupAlternative(params RegexBuilder[] builders)
+    public void GroupAlternative(IEnumerable<IRegexInfo> builders)
     {
-      StartGroup().AppendJoin('|', builders as object[]).Append(')');
-      GroupNum += builders.Sum(o => o.GroupNum - 1);
+      StartGroup().AppendJoin('|', builders.Select(o => o.Raw)).Append(')');
+      GroupNum += builders.Sum(o => o.GroupNum);
     }
 
     private StringBuilder StartGroup()
@@ -57,7 +65,7 @@ namespace Sugarmaple.Text
       } else _buffer.Append(value, repeatCount);
     }
 
-    private StringBuilder Append(char value) => _buffer.Append(value);
+    internal StringBuilder Append(char value) => _buffer.Append(value);
     private StringBuilder Append(string value) => _buffer.Append(value);
     private StringBuilder Append(char[] value) => _buffer.Append(value);
 
@@ -66,6 +74,10 @@ namespace Sugarmaple.Text
         _buffer.ToPool();
     }
 
-    public static implicit operator string?(RegexBuilder? o) => o?.ToString();
+    public override string ToString()
+    {
+      return _buffer.ToString();
+    }
+    //public static implicit operator string?(RegexBuilder? o) => o?.ToString();
   } 
 }

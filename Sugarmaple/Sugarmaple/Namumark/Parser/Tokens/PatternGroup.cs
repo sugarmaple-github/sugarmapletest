@@ -2,13 +2,13 @@ using Sugarmaple.Namumark.Parser.Keywords;
 
 namespace Sugarmaple.Namumark.Parser.Tokens
 {
-  internal class PatternGroup: FitCapture
+  internal class PatternGroup: PatternCapture
   {
-    public bool IsWikiBlock { get; }
+    public TokenCommand Command { get; }
 
-    public PatternGroup(string text, int index, int length, bool isWikiBlock): base(text, index, length)
+    public PatternGroup(string text, int index, int length, TokenCommand? command): base(text, index, length)
     {
-      IsWikiBlock = isWikiBlock;
+      Command = command ?? TokenCommand.Empty;
     }
   }
 }

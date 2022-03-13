@@ -8,13 +8,13 @@ namespace Sugarmaple.Namumark.Parser.Keywords
   internal class ComplexCommand: TokenCommand
   {
     //Command By SubGroup
-    public TokenCommand[] _subcommands { get; }
+    public TokenCommand[] Subcommands { get; }
 
-    public TokenCommand this[int index] => _subcommands[index];
+    public TokenCommand this[int index] => Subcommands[index];
 
     public ComplexCommand(params TokenCommand[] subcommands): base(CommandType.Complex, SyntaxCode.None)
     {
-      _subcommands = subcommands;
+      Subcommands = subcommands;
     }
   }
 }
